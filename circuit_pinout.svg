@@ -1,0 +1,278 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 680" font-family="monospace" font-size="12">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#333"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#c0392b"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#2980b9"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#27ae60"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#e67e22"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="680" fill="#f8f9fa" rx="8"/>
+
+  <!-- Title -->
+  <text x="450" y="35" text-anchor="middle" font-size="20" font-weight="bold" fill="#2c3e50">Billy Bass - Circuit Pinout Diagram</text>
+  <text x="450" y="55" text-anchor="middle" font-size="11" fill="#7f8c8d">Arduino Uno + Adafruit Motor Shield v2 + Sound Sensor</text>
+
+  <!-- ==================== ARDUINO UNO ==================== -->
+  <g transform="translate(280, 200)">
+    <!-- Board body -->
+    <rect x="0" y="0" width="200" height="300" rx="6" fill="#2980b9" stroke="#1a5276" stroke-width="2"/>
+    <text x="100" y="25" text-anchor="middle" font-size="14" font-weight="bold" fill="white">ARDUINO UNO</text>
+
+    <!-- USB connector -->
+    <rect x="70" y="-15" width="60" height="20" rx="3" fill="#7f8c8d" stroke="#5d6d7e" stroke-width="1.5"/>
+    <text x="100" y="-1" text-anchor="middle" font-size="9" fill="white">USB</text>
+
+    <!-- Power barrel jack -->
+    <rect x="-15" y="10" width="20" height="30" rx="3" fill="#2c3e50" stroke="#1a252f" stroke-width="1.5"/>
+    <text x="-5" y="30" text-anchor="middle" font-size="7" fill="white">DC</text>
+
+    <!-- Digital pins (right side) -->
+    <text x="190" y="55" text-anchor="end" font-size="9" fill="#d5f4e6">DIGITAL PINS</text>
+    <g font-size="10" fill="white">
+      <rect x="175" y="62" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="73" text-anchor="middle">D13</text>
+      <rect x="175" y="78" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="89" text-anchor="middle">D12</text>
+      <rect x="175" y="94" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="105" text-anchor="middle">D11</text>
+      <rect x="175" y="110" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="121" text-anchor="middle">D10</text>
+      <rect x="175" y="126" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="137" text-anchor="middle">D9</text>
+      <rect x="175" y="142" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="153" text-anchor="middle">D8</text>
+      <rect x="175" y="162" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="173" text-anchor="middle">D7</text>
+      <rect x="175" y="178" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="189" text-anchor="middle">D6</text>
+      <rect x="175" y="194" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="205" text-anchor="middle">D5</text>
+      <rect x="175" y="210" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="221" text-anchor="middle">D4</text>
+      <rect x="175" y="226" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="237" text-anchor="middle">D3</text>
+      <rect x="175" y="242" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="253" text-anchor="middle">D2</text>
+      <rect x="175" y="258" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="269" text-anchor="middle">TX1</text>
+      <rect x="175" y="274" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="190" y="285" text-anchor="middle">RX0</text>
+    </g>
+
+    <!-- Analog pins (left side) -->
+    <text x="10" y="170" font-size="9" fill="#d5f4e6">ANALOG</text>
+    <g font-size="10" fill="white">
+      <rect x="-5" y="178" width="30" height="14" rx="2" fill="#e67e22" stroke="#d35400" stroke-width="1"/>
+      <text x="10" y="189" text-anchor="middle" font-weight="bold">A0</text>
+      <rect x="-5" y="194" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="10" y="205" text-anchor="middle">A1</text>
+      <rect x="-5" y="210" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="10" y="221" text-anchor="middle">A2</text>
+      <rect x="-5" y="226" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="10" y="237" text-anchor="middle">A3</text>
+      <rect x="-5" y="242" width="30" height="14" rx="2" fill="#27ae60" stroke="#1e8449" stroke-width="1"/>
+      <text x="10" y="253" text-anchor="middle" font-weight="bold">A4</text>
+      <rect x="-5" y="258" width="30" height="14" rx="2" fill="#27ae60" stroke="#1e8449" stroke-width="1"/>
+      <text x="10" y="269" text-anchor="middle" font-weight="bold">A5</text>
+    </g>
+
+    <!-- Power pins (left side, top) -->
+    <text x="10" y="65" font-size="9" fill="#d5f4e6">POWER</text>
+    <g font-size="10" fill="white">
+      <rect x="-5" y="72" width="30" height="14" rx="2" fill="#c0392b"/>
+      <text x="10" y="83" text-anchor="middle">5V</text>
+      <rect x="-5" y="88" width="30" height="14" rx="2" fill="#c0392b"/>
+      <text x="10" y="99" text-anchor="middle">3.3V</text>
+      <rect x="-5" y="104" width="30" height="14" rx="2" fill="#2c3e50"/>
+      <text x="10" y="115" text-anchor="middle">GND</text>
+      <rect x="-5" y="120" width="30" height="14" rx="2" fill="#2c3e50"/>
+      <text x="10" y="131" text-anchor="middle">GND</text>
+      <rect x="-5" y="136" width="30" height="14" rx="2" fill="#1a5276"/>
+      <text x="10" y="147" text-anchor="middle">VIN</text>
+    </g>
+
+    <!-- I2C labels -->
+    <text x="10" y="284" font-size="8" fill="#2ecc71" font-weight="bold">SDA</text>
+    <text x="10" y="296" font-size="8" fill="#2ecc71" font-weight="bold">SCL</text>
+  </g>
+
+  <!-- ==================== ADAFRUIT MOTOR SHIELD ==================== -->
+  <g transform="translate(560, 80)">
+    <!-- Shield body -->
+    <rect x="0" y="0" width="280" height="240" rx="6" fill="#27ae60" stroke="#1e8449" stroke-width="2"/>
+    <text x="140" y="25" text-anchor="middle" font-size="13" font-weight="bold" fill="white">ADAFRUIT MOTOR SHIELD v2</text>
+    <text x="140" y="42" text-anchor="middle" font-size="10" fill="#d5f4e6">(Stacks on Arduino via headers)</text>
+
+    <!-- I2C connection note -->
+    <rect x="15" y="52" width="250" height="22" rx="3" fill="#1e8449"/>
+    <text x="140" y="67" text-anchor="middle" font-size="10" fill="white">I2C Bus: SDA (A4) + SCL (A5)</text>
+
+    <!-- Motor Terminal M1 -->
+    <rect x="15" y="85" width="120" height="65" rx="4" fill="#1e8449" stroke="#145a32" stroke-width="1.5"/>
+    <text x="75" y="102" text-anchor="middle" font-size="11" font-weight="bold" fill="white">M1 Terminal</text>
+    <text x="75" y="118" text-anchor="middle" font-size="10" fill="#d5f4e6">MOUTH MOTOR</text>
+    <text x="75" y="133" text-anchor="middle" font-size="9" fill="#a9dfbf">DC Motor Port 1</text>
+    <text x="75" y="145" text-anchor="middle" font-size="8" fill="#a9dfbf">Speed: 0-254</text>
+
+    <!-- Motor Terminal M2 -->
+    <rect x="145" y="85" width="120" height="65" rx="4" fill="#1e8449" stroke="#145a32" stroke-width="1.5"/>
+    <text x="205" y="102" text-anchor="middle" font-size="11" font-weight="bold" fill="white">M2 Terminal</text>
+    <text x="205" y="118" text-anchor="middle" font-size="10" fill="#d5f4e6">HEAD MOTOR</text>
+    <text x="205" y="133" text-anchor="middle" font-size="9" fill="#a9dfbf">DC Motor Port 2</text>
+    <text x="205" y="145" text-anchor="middle" font-size="8" fill="#a9dfbf">Speed: 254</text>
+
+    <!-- Motor Terminal M3 (unused) -->
+    <rect x="15" y="158" width="120" height="30" rx="4" fill="#555" stroke="#444" stroke-width="1" opacity="0.4"/>
+    <text x="75" y="177" text-anchor="middle" font-size="10" fill="#999">M3 (unused)</text>
+
+    <!-- Motor Terminal M4 (unused) -->
+    <rect x="145" y="158" width="120" height="30" rx="4" fill="#555" stroke="#444" stroke-width="1" opacity="0.4"/>
+    <text x="205" y="177" text-anchor="middle" font-size="10" fill="#999">M4 (unused)</text>
+
+    <!-- External Power -->
+    <rect x="15" y="198" width="250" height="30" rx="4" fill="#c0392b" stroke="#922b21" stroke-width="1.5"/>
+    <text x="140" y="217" text-anchor="middle" font-size="11" font-weight="bold" fill="white">EXT POWER: 5-12V DC (for motors)</text>
+  </g>
+
+  <!-- ==================== SOUND SENSOR ==================== -->
+  <g transform="translate(30, 120)">
+    <rect x="0" y="0" width="160" height="120" rx="6" fill="#e67e22" stroke="#d35400" stroke-width="2"/>
+    <text x="80" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="white">SOUND SENSOR</text>
+    <text x="80" y="38" text-anchor="middle" font-size="10" fill="#fdebd0">Microphone Module</text>
+
+    <!-- Pins -->
+    <g font-size="11" fill="white">
+      <rect x="15" y="50" width="130" height="18" rx="3" fill="#d35400"/>
+      <text x="80" y="63" text-anchor="middle" font-weight="bold">SIG (Signal Out)</text>
+      <rect x="15" y="72" width="130" height="18" rx="3" fill="#c0392b"/>
+      <text x="80" y="85" text-anchor="middle">VCC (5V)</text>
+      <rect x="15" y="94" width="130" height="18" rx="3" fill="#2c3e50"/>
+      <text x="80" y="107" text-anchor="middle">GND</text>
+    </g>
+  </g>
+
+  <!-- ==================== MOUTH MOTOR ==================== -->
+  <g transform="translate(620, 370)">
+    <rect x="0" y="0" width="140" height="80" rx="6" fill="#8e44ad" stroke="#6c3483" stroke-width="2"/>
+    <text x="70" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="white">DC MOTOR</text>
+    <text x="70" y="40" text-anchor="middle" font-size="11" fill="#d7bde2">MOUTH</text>
+    <text x="70" y="56" text-anchor="middle" font-size="9" fill="#d7bde2">2 wires to M1</text>
+    <text x="70" y="70" text-anchor="middle" font-size="9" fill="#d7bde2">terminal on shield</text>
+  </g>
+
+  <!-- ==================== HEAD MOTOR ==================== -->
+  <g transform="translate(620, 470)">
+    <rect x="0" y="0" width="140" height="80" rx="6" fill="#8e44ad" stroke="#6c3483" stroke-width="2"/>
+    <text x="70" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="white">DC MOTOR</text>
+    <text x="70" y="40" text-anchor="middle" font-size="11" fill="#d7bde2">HEAD</text>
+    <text x="70" y="56" text-anchor="middle" font-size="9" fill="#d7bde2">2 wires to M2</text>
+    <text x="70" y="70" text-anchor="middle" font-size="9" fill="#d7bde2">terminal on shield</text>
+  </g>
+
+  <!-- ==================== EXTERNAL POWER ==================== -->
+  <g transform="translate(620, 570)">
+    <rect x="0" y="0" width="140" height="60" rx="6" fill="#c0392b" stroke="#922b21" stroke-width="2"/>
+    <text x="70" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="white">POWER SUPPLY</text>
+    <text x="70" y="40" text-anchor="middle" font-size="10" fill="#f5b7b1">5-12V DC</text>
+    <text x="70" y="54" text-anchor="middle" font-size="9" fill="#f5b7b1">for motor shield</text>
+  </g>
+
+  <!-- ==================== WIRING CONNECTIONS ==================== -->
+
+  <!-- Sound Sensor SIG -> Arduino A0 -->
+  <line x1="190" y1="179" x2="275" y2="385" stroke="#e67e22" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#arrow-orange)"/>
+  <rect x="195" y="268" width="85" height="18" rx="3" fill="#e67e22" opacity="0.9"/>
+  <text x="237" y="281" text-anchor="middle" font-size="9" fill="white" font-weight="bold">SIG -> A0</text>
+
+  <!-- Sound Sensor VCC -> Arduino 5V -->
+  <line x1="110" y1="240" x2="275" y2="279" stroke="#c0392b" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-red)"/>
+  <rect x="150" y="244" width="75" height="16" rx="3" fill="#c0392b" opacity="0.9"/>
+  <text x="187" y="256" text-anchor="middle" font-size="9" fill="white" font-weight="bold">VCC -> 5V</text>
+
+  <!-- Sound Sensor GND -> Arduino GND -->
+  <line x1="110" y1="240" x2="275" y2="310" stroke="#2c3e50" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow)"/>
+  <rect x="150" y="270" width="80" height="16" rx="3" fill="#2c3e50" opacity="0.9"/>
+  <text x="190" y="282" text-anchor="middle" font-size="9" fill="white" font-weight="bold">GND -> GND</text>
+
+  <!-- Arduino A4/A5 (I2C) -> Motor Shield -->
+  <path d="M 275 449 C 220 449, 220 200, 560 200" fill="none" stroke="#27ae60" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#arrow-green)"/>
+  <rect x="220" y="350" width="95" height="32" rx="3" fill="#27ae60" opacity="0.9"/>
+  <text x="267" y="364" text-anchor="middle" font-size="9" fill="white" font-weight="bold">I2C Connection</text>
+  <text x="267" y="377" text-anchor="middle" font-size="8" fill="white">A4(SDA) + A5(SCL)</text>
+
+  <!-- Motor Shield M1 -> Mouth Motor -->
+  <line x1="635" y1="312" x2="665" y2="370" stroke="#8e44ad" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- Motor Shield M2 -> Head Motor -->
+  <line x1="765" y1="312" x2="710" y2="470" stroke="#8e44ad" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- External Power -> Motor Shield -->
+  <line x1="690" y1="570" x2="690" y2="320" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="4,4" marker-end="url(#arrow-red)"/>
+
+  <!-- ==================== LEGEND ==================== -->
+  <g transform="translate(30, 490)">
+    <rect x="0" y="0" width="250" height="170" rx="6" fill="white" stroke="#bdc3c7" stroke-width="1.5"/>
+    <text x="125" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">CONNECTION LEGEND</text>
+
+    <line x1="15" y1="38" x2="55" y2="38" stroke="#e67e22" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <text x="65" y="42" font-size="10" fill="#2c3e50">Sound Sensor -> A0 (analog)</text>
+
+    <line x1="15" y1="58" x2="55" y2="58" stroke="#c0392b" stroke-width="2"/>
+    <text x="65" y="62" font-size="10" fill="#2c3e50">Power (5V / GND)</text>
+
+    <line x1="15" y1="78" x2="55" y2="78" stroke="#27ae60" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <text x="65" y="82" font-size="10" fill="#2c3e50">I2C Bus (SDA/SCL)</text>
+
+    <line x1="15" y1="98" x2="55" y2="98" stroke="#8e44ad" stroke-width="2.5"/>
+    <text x="65" y="102" font-size="10" fill="#2c3e50">Motor connections (M1, M2)</text>
+
+    <line x1="15" y1="118" x2="55" y2="118" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="4,4"/>
+    <text x="65" y="122" font-size="10" fill="#2c3e50">External motor power</text>
+
+    <text x="15" y="145" font-size="9" fill="#7f8c8d">Motor Shield stacks directly on Arduino</text>
+    <text x="15" y="160" font-size="9" fill="#7f8c8d">via pin headers (no separate wiring)</text>
+  </g>
+
+  <!-- ==================== PIN SUMMARY TABLE ==================== -->
+  <g transform="translate(300, 530)">
+    <rect x="0" y="0" width="290" height="130" rx="6" fill="white" stroke="#bdc3c7" stroke-width="1.5"/>
+    <text x="145" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">PIN SUMMARY</text>
+
+    <text x="15" y="42" font-size="10" fill="#2c3e50" font-weight="bold">Pin</text>
+    <text x="60" y="42" font-size="10" fill="#2c3e50" font-weight="bold">Function</text>
+    <text x="160" y="42" font-size="10" fill="#2c3e50" font-weight="bold">Connected To</text>
+    <line x1="10" y1="48" x2="280" y2="48" stroke="#bdc3c7" stroke-width="1"/>
+
+    <text x="15" y="63" font-size="10" fill="#e67e22" font-weight="bold">A0</text>
+    <text x="60" y="63" font-size="10" fill="#2c3e50">Analog Input</text>
+    <text x="160" y="63" font-size="10" fill="#2c3e50">Sound Sensor SIG</text>
+
+    <text x="15" y="80" font-size="10" fill="#27ae60" font-weight="bold">A4</text>
+    <text x="60" y="80" font-size="10" fill="#2c3e50">SDA (I2C)</text>
+    <text x="160" y="80" font-size="10" fill="#2c3e50">Motor Shield</text>
+
+    <text x="15" y="97" font-size="10" fill="#27ae60" font-weight="bold">A5</text>
+    <text x="60" y="97" font-size="10" fill="#2c3e50">SCL (I2C)</text>
+    <text x="160" y="97" font-size="10" fill="#2c3e50">Motor Shield</text>
+
+    <text x="15" y="114" font-size="10" fill="#c0392b" font-weight="bold">5V</text>
+    <text x="60" y="114" font-size="10" fill="#2c3e50">Power Out</text>
+    <text x="160" y="114" font-size="10" fill="#2c3e50">Sound Sensor VCC</text>
+
+    <text x="15" y="128" font-size="10" fill="#2c3e50" font-weight="bold">GND</text>
+    <text x="60" y="128" font-size="10" fill="#2c3e50">Ground</text>
+    <text x="160" y="128" font-size="10" fill="#2c3e50">Sound Sensor GND</text>
+  </g>
+</svg>
