@@ -27,6 +27,9 @@ const int SENSOR_MAP_MAX   = 180;       // Upper range after mapping
 // ----- Timing -----
 const unsigned long HEAD_TIMEOUT_MS = 3000;  // Silence duration before head releases
 
+// ----- Debug -----
+const bool DEBUG = true;                     // Toggle serial debug output
+
 // ----- Globals -----
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *mouthMotor = AFMS.getMotor(MOUTH_MOTOR_PORT);
@@ -46,7 +49,7 @@ void setup() {
   headMotor->run(RELEASE);
 
   pinMode(SOUND_PIN, INPUT);
-  Serial.begin(9600);
+  if (DEBUG) Serial.begin(9600);
 }
 
 void loop() {
@@ -69,10 +72,12 @@ void loop() {
     mouthMotor->setSpeed(mouthSpeed);
     mouthMotor->run(FORWARD);
 
-    Serial.print("Sound: ");
-    Serial.print(sensorValue);
-    Serial.print(" | Mouth speed: ");
-    Serial.println(mouthSpeed);
+    if (DEBUG) {
+      Serial.print("Sound: ");
+      Serial.print(sensorValue);
+      Serial.print(" | Mouth speed: ");
+      Serial.println(mouthSpeed);
+    }
   } else {
     mouthMotor->run(RELEASE);
   }
@@ -80,6 +85,6 @@ void loop() {
   if (headActive && currentMillis - lastSoundTime >= HEAD_TIMEOUT_MS) {
     headMotor->run(RELEASE);
     headActive = false;
-    Serial.println("Head released (timeout)");
+    if (DEBUG) Serial.println("Head released (timeout)");
   }
 }
