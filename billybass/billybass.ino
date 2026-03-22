@@ -21,7 +21,7 @@ const int MOUTH_SPEED_MAX  = 254;       // Maximum mouth motor speed at loudest 
 
 // ----- Sound Detection -----
 const int SOUND_THRESHOLD  = 30;        // Minimum mapped value to trigger motors
-const int SENSOR_RAW_MAX   = 1023;      // Full range of Arduino analogRead (10-bit ADC)
+const int SENSOR_RAW_MAX   = 512;       // Upper range of raw analog reading
 const int SENSOR_MAP_MAX   = 180;       // Upper range after mapping
 
 // ----- Timing -----
