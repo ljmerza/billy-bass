@@ -1,64 +1,72 @@
 /*
-  Make a DC Motor Move to Sound.
-   This example code is in the public domain.
-   Created by Donald Bell, Maker Project Lab (2016).
-   Based on Sound to Servo by Cenk Özdemir (2012) 
-   and DCMotorTest by Adafruit
+  Big Mouth Billy Bass - Sound Reactive Animatronic
+  Originally by Donald Bell, Maker Project Lab (2016).
+  Based on Sound to Servo by Cenk Ozdemir (2012)
+  and DCMotorTest by Adafruit
 */
-// include the Adafruit motor shield library
+
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_MS_PWMServoDriver.h"
 
-Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
-Adafruit_DCMotor *myMouth = AFMS.getMotor(1);
-Adafruit_DCMotor *myHead = AFMS.getMotor(2);
-int SoundInPin = A0;
-unsigned long previousMillis = 0; // save last millis when motors were ran
-const long interval = 3000; // how long to wait till head is released
+// ----- Pin Configuration -----
+const int SOUND_PIN = A0;               // Analog pin for sound sensor input
+
+// ----- Motor Configuration -----
+const int MOUTH_MOTOR_PORT = 1;         // Motor shield port for mouth
+const int HEAD_MOTOR_PORT  = 2;         // Motor shield port for head
+const int HEAD_SPEED       = 254;       // Head motor speed (0-255)
+const int MOUTH_SPEED_MIN  = 140;       // Mouth motor ramp start speed
+const int MOUTH_SPEED_MAX  = 254;       // Mouth motor ramp end speed
+
+// ----- Sound Detection -----
+const int SOUND_THRESHOLD  = 30;        // Minimum mapped value to trigger motors
+const int SENSOR_RAW_MAX   = 512;       // Upper range of raw analog reading
+const int SENSOR_MAP_MAX   = 180;       // Upper range after mapping
+
+// ----- Timing -----
+const unsigned long HEAD_TIMEOUT_MS = 3000;  // Silence duration before head releases
+
+// ----- Globals -----
+Adafruit_MotorShield AFMS = Adafruit_MotorShield();
+Adafruit_DCMotor *mouthMotor = AFMS.getMotor(MOUTH_MOTOR_PORT);
+Adafruit_DCMotor *headMotor  = AFMS.getMotor(HEAD_MOTOR_PORT);
+unsigned long lastSoundTime = 0;
 
 void setup() {
   AFMS.begin();
-  
-  myMouth->setSpeed(0);
-  myMouth->run(FORWARD);
-  myMouth->run(RELEASE);
 
-  myHead->setSpeed(254);
-  myHead->run(FORWARD);
-  myHead->run(RELEASE);
-  
-  pinMode(SoundInPin, INPUT);
+  mouthMotor->setSpeed(0);
+  mouthMotor->run(FORWARD);
+  mouthMotor->run(RELEASE);
+
+  headMotor->setSpeed(HEAD_SPEED);
+  headMotor->run(FORWARD);
+  headMotor->run(RELEASE);
+
+  pinMode(SOUND_PIN, INPUT);
   Serial.begin(9600);
-
 }
 
-// the loop routine runs over and over again forever:
 void loop() {
-  uint8_t i;
+  int sensorValue = analogRead(SOUND_PIN);
+  sensorValue = map(sensorValue, 0, SENSOR_RAW_MAX, 0, SENSOR_MAP_MAX);
 
-  int sensorValue = analogRead(SoundInPin); 
-  sensorValue = map(sensorValue,0,512,0,180);
-
-  // get current milis
   unsigned long currentMillis = millis();
 
-  if (sensorValue > 30) {
-    
-    previousMillis = currentMillis;
-    myHead->run(FORWARD);
-    myMouth->run(FORWARD);
-    
-    for (i=140; i<255; i++) {
-      myMouth->setSpeed(i);
+  if (sensorValue > SOUND_THRESHOLD) {
+    lastSoundTime = currentMillis;
+    headMotor->run(FORWARD);
+    mouthMotor->run(FORWARD);
+
+    for (uint8_t i = MOUTH_SPEED_MIN; i < MOUTH_SPEED_MAX + 1; i++) {
+      mouthMotor->setSpeed(i);
     }
 
-    myMouth->run(RELEASE);
+    mouthMotor->run(RELEASE);
   }
 
-  // if too much time passed without voice then stop head
-  if(currentMillis - previousMillis >= interval){
-    myHead->run(RELEASE);
+  if (currentMillis - lastSoundTime >= HEAD_TIMEOUT_MS) {
+    headMotor->run(RELEASE);
   }
 }
-
