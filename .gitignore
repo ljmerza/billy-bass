@@ -1,0 +1,11 @@
+# WiFi credentials - copy arduino_secrets.h.example and fill in locally
+billybass/arduino_secrets.h
+
+# Arduino build output
+build/
+*.bin
+*.elf
+*.hex
+
+# Editor / IDE (machine-specific paths)
+.vscode/
