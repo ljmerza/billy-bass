@@ -2,20 +2,18 @@
 
 static uint8_t testMotor = 0;
 static int testSpeed = 0;
-static int testDirection = 1;
 static unsigned long testUntil = 0;
 static bool running = false;
 static bool endedFlag = false;
 
-bool motorTestRequest(uint8_t motor, int speed, int direction, unsigned long ms) {
-  if (motor != 1 && motor != 2) return false;
+bool motorTestRequest(uint8_t motor, int speed, unsigned long ms) {
+  if (motor < 1 || motor > 3) return false;
   if (speed < 0 || speed > 255) return false;
   if (ms == 0) return false;
   if (ms > MOTOR_TEST_MAX_MS) ms = MOTOR_TEST_MAX_MS;
 
   testMotor = motor;
   testSpeed = speed;
-  testDirection = (direction < 0) ? -1 : 1;
   testUntil = millis() + ms;
   running = true;
   return true;
@@ -30,12 +28,11 @@ void motorTestLoop() {
   }
 }
 
-bool motorTestActive(uint8_t& motor, int& speed, int& direction) {
+bool motorTestActive(uint8_t& motor, int& speed) {
   if (!running) return false;
 
   motor = testMotor;
   speed = testSpeed;
-  direction = testDirection;
   return true;
 }
 

@@ -13,6 +13,12 @@
 
   The resting level is tracked separately, purely so the UI can show it during
   calibration - the level itself does not depend on it.
+
+  Samples are run through a 300-3000Hz band-pass before the swing is measured,
+  so a bass line and a kick drum stop counting as "loud". Music carries
+  continuous low-frequency energy, which pins a full-band envelope above any
+  fixed threshold and holds the mouth open for the whole song. Set `voice` to 0
+  to measure the unfiltered signal instead.
 */
 
 #pragma once
@@ -31,5 +37,7 @@ int soundLevel();
 // Diagnostics for calibration.
 int soundRaw();          // most recent raw ADC reading
 int soundBaseline();     // tracked resting level
-int soundPeakToPeak();   // last window's raw swing
+int soundPeakToPeak();   // last window's swing, voice-band filtered when enabled
+int soundRawPeakToPeak();// last window's unfiltered swing, to see what the filter removed
+int soundAverage();      // slow running mean of the level, for the adaptive threshold
 int soundSamplesPerWindow();

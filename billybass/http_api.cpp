@@ -129,7 +129,13 @@ static void sendPage(WiFiClient& client) {
     ".r span:last-child{color:var(--mut)}"
     ".bar{height:9px;background:var(--ln);border-radius:5px;overflow:hidden;margin:8px 0 4px}"
     ".bar i{display:block;height:100%;background:var(--acc);width:0;transition:width .12s}"
-    "label{display:flex;justify-content:space-between;align-items:center;padding:5px 0}"
+    "label{display:flex;justify-content:space-between;align-items:center;padding:5px 0;position:relative}"
+    ".c h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--acc);margin:16px 0 4px;padding-top:12px;border-top:1px solid var(--ln)}"
+    ".c h3:first-of-type{margin-top:2px;padding-top:0;border-top:0}"
+    ".q{font-style:normal;display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;background:var(--ln);color:var(--mut);font-size:10px;cursor:help;vertical-align:1px}"
+    ".q:hover,.q:focus{background:var(--acc);color:#04121f;outline:none}"
+    ".q::after{content:attr(data-t);display:none;position:absolute;left:0;right:0;top:100%;background:#05070a;border:1px solid var(--ln);border-radius:7px;padding:8px 10px;color:var(--fg);font:12px/1.45 system-ui,sans-serif;text-align:left;z-index:9;box-shadow:0 6px 18px #0009}"
+    ".q:hover::after,.q:focus::after{display:block}"
     "input{background:var(--bg);border:1px solid var(--ln);color:var(--fg);border-radius:6px;padding:7px 9px;font:inherit}"
     "input[type=number]{width:105px}"
     "input[type=text]{width:100%}"
@@ -148,8 +154,13 @@ static void sendPage(WiFiClient& client) {
     "<div class=r><span>sound</span><span id=s>-</span></div>"
     "<div class=r><span>mouth speed</span><span id=m>-</span></div>"
     "<div class=r><span>head</span><span id=h>-</span></div>"
+    "<div class=r><span>tail</span><span id=t>-</span></div>"
     "<div class=r><span>raw ADC</span><span id=rw>-</span></div>"
-    "<div class=r><span>peak-to-peak</span><span id=pp>-</span></div>"
+    "<div class=r><span>peak-to-peak (voice)</span><span id=pp>-</span></div>"
+    "<div class=r><span>peak-to-peak (raw)</span><span id=ppr>-</span></div>"
+    "<div class=r><span>threshold</span><span id=thr>-</span></div>"
+    "<div class=r><span>running mean</span><span id=avg>-</span></div>"
+    "<div class=r><span>samples/window</span><span id=smp>-</span></div>"
     "<div class=r><span>source</span><span id=sp>-</span></div>"
     "<div class=btns><a class='b g' href=/i2c>Scan I2C bus</a></div></div>"));
 
@@ -163,38 +174,114 @@ static void sendPage(WiFiClient& client) {
     "<a class='b g' href='/stop?ui=1'>Stop</a></div></form></div>"));
 
   // Motors
+  // Forward only. The mouth, head and tail all drive against a return spring
+  // into a hard stop, so there is no reverse test to offer.
   client.print(F(
     "<div class=c><h2>Motor test</h2>"
     "<div class=btns>"
     "<a class=b href='/motor?m=1&speed=220&ms=1200&ui=1'>M1 mouth</a>"
-    "<a class='b g' href='/motor?m=1&speed=220&ms=1200&dir=-1&ui=1'>M1 rev</a>"
     "<a class=b href='/motor?m=2&speed=220&ms=1200&ui=1'>M2 head</a>"
-    "<a class='b g' href='/motor?m=2&speed=220&ms=1200&dir=-1&ui=1'>M2 rev</a>"
+    "<a class=b href='/motor?m=3&speed=200&ms=1200&ui=1'>M3 tail</a>"
     "</div></div>"));
 
-  // Config
+  // Config. Grouped by what each knob actually moves, because a flat list of
+  // fifteen numbers gives no clue which ones interact. Every row carries the
+  // explanation and the accepted range as a tooltip - that information used to
+  // exist only as comments in config.cpp, where nobody tuning the fish from a
+  // phone was ever going to read it.
   client.print(F("<div class=c><h2>Config</h2><form action=/config method=get>"));
 
-  struct Field { const char* key; const char* label; long value; };
-  const Field fields[] = {
-    { "thresh",  "Sound threshold",     c.soundThreshold },
-    { "ppmax",   "Full-scale swing",    c.ppFullScale },
-    { "mouthlo", "Mouth speed min",     c.mouthSpeedMin },
-    { "mouthhi", "Mouth speed max",     c.mouthSpeedMax },
-    { "headspd", "Head speed",          c.headSpeed },
-    { "headtmo", "Head timeout (ms)",   (long)c.headTimeoutMs },
-    { "spkdly",  "Speak delay (ms)",    (long)c.speakDelayMs },
-    { "spkrate", "Speak rate (%)",      c.speakRatePct }
+  struct Field { const char* key; const char* label; long value; const char* help; };
+  struct Section { const char* title; const Field* fields; uint8_t count; };
+
+  const Field general[] = {
+    { "thresh",  "Sound threshold", c.soundThreshold,
+      "Hard noise gate on the mapped level, 0-1023 (full scale is 180). Nothing moves until "
+      "sound clears this. The adaptive percentage can raise the bar, never lower it." },
+    { "ppmax",   "Full-scale swing", c.ppFullScale,
+      "Raw ADC peak-to-peak swing treated as full volume, 10-4095. Lower it for a quiet "
+      "source, raise it if the fish maxes out on everything." },
+    { "voice",   "Voice filter (0/1)", c.voiceFilter,
+      "1 measures only the 300-3000Hz voice band, 0 measures everything. Full-band readings "
+      "stay high through a whole music track, which holds the mouth open." },
+    { "adapt",   "Adaptive thresh (%)", c.adaptPct,
+      "Threshold as a percentage of the running mean level, 0-300. Over 100 means only peaks "
+      "above the mean count, which is what makes the mouth flap. 0 disables it." },
+    { "spkdly",  "Speak delay (ms)", (long)c.speakDelayMs,
+      "Holds the mouth shut this long at the start of an utterance, 0-5000, so the animation "
+      "can be lined up with audio another device is playing." },
+    { "spkrate", "Speak rate (%)", c.speakRatePct,
+      "Scales syllable timing for /speak, 50-200. 100 is normal pace; lower is slower." }
   };
 
-  for (uint8_t i = 0; i < sizeof(fields) / sizeof(fields[0]); i++) {
-    client.print(F("<label><span>"));
-    client.print(fields[i].label);
-    client.print(F("</span><input type=number name="));
-    client.print(fields[i].key);
-    client.print(F(" value="));
-    client.print(fields[i].value);
-    client.print(F("></label>"));
+  const Field head[] = {
+    { "headspd", "Head speed", c.headSpeed,
+      "Drive PWM during the head's stroke, 0-255. Higher swings it out faster and harder "
+      "against the stop." },
+    { "headmv",  "Head travel (ms)", (long)c.headMoveMs,
+      "How long the motor drives to swing the head out, 0-5000. Nothing measures where the "
+      "head is, so this stroke length is what sets how far it comes out - longer means "
+      "further, up to the mechanical stop." },
+    { "headhld", "Head hold power", c.headHoldSpeed,
+      "PWM that holds the head out once the stroke ends, 0-255. Enough to beat the return "
+      "spring without stalling at full power the whole time it is out. 0 lets the spring "
+      "pull it straight back." },
+    { "headtmo", "Stay out (ms)", (long)c.headTimeoutMs,
+      "How long the head stays out after the last sound, 0-600000, before the motor releases "
+      "and the spring pulls it in. New sound restarts the clock." }
+  };
+
+  const Field tail[] = {
+    { "tailspd", "Tail speed", c.tailSpeed,
+      "Drive PWM while the tail flaps, 0-255." },
+    { "tailms",  "Tail flap (ms)", (long)c.tailFlapMs,
+      "One half-stroke, 40-2000. Driven forward this long, then released for the same so the "
+      "spring swings it back. Under 40ms the spring cannot finish a return and the tail just "
+      "buzzes. The tail only flaps while the fish is speaking." }
+  };
+
+  const Field mouth[] = {
+    { "mouthlo", "Mouth speed min", c.mouthSpeedMin,
+      "PWM floor once the mouth opens, 0-255. A sound sitting right at the threshold drives "
+      "the motor at this speed." },
+    { "mouthhi", "Mouth speed max", c.mouthSpeedMax,
+      "PWM at the loudest sound, 0-255. Levels between the threshold and full scale map "
+      "between min and max." },
+    { "artic",   "Articulate (0/1)", c.articulate,
+      "1 pulses the mouth so the return spring always gets a closed window. 0 is the plain "
+      "proportional hold, which pins the mouth open on continuous audio." },
+    { "mouthon", "Mouth pulse on (ms)", (long)c.mouthOnMs,
+      "Length of one drive pulse when articulate is on, 20-1000. Below about 20ms the motor "
+      "never overcomes its own inertia and the mouth only twitches." },
+    { "mouthof", "Mouth pulse off (ms)", (long)c.mouthOffMs,
+      "Guaranteed closed time between pulses when articulate is on, 20-1000. This is the "
+      "window the return spring uses to shut the mouth." }
+  };
+
+  const Section sections[] = {
+    { "General", general, sizeof(general) / sizeof(general[0]) },
+    { "Head",    head,    sizeof(head)    / sizeof(head[0])    },
+    { "Tail",    tail,    sizeof(tail)    / sizeof(tail[0])    },
+    { "Mouth",   mouth,   sizeof(mouth)   / sizeof(mouth[0])   }
+  };
+
+  for (uint8_t s = 0; s < sizeof(sections) / sizeof(sections[0]); s++) {
+    client.print(F("<h3>"));
+    client.print(sections[s].title);
+    client.print(F("</h3>"));
+
+    for (uint8_t i = 0; i < sections[s].count; i++) {
+      const Field& f = sections[s].fields[i];
+      client.print(F("<label><span>"));
+      client.print(f.label);
+      client.print(F(" <i class=q tabindex=0 data-t=\""));
+      client.print(f.help);
+      client.print(F("\">?</i></span><input type=number name="));
+      client.print(f.key);
+      client.print(F(" value="));
+      client.print(f.value);
+      client.print(F("></label>"));
+    }
   }
 
   client.print(F(
@@ -211,7 +298,9 @@ static void sendPage(WiFiClient& client) {
     "t.split(/\\s+/).forEach(function(p){var i=p.indexOf('=');if(i>0)o[p.slice(0,i)]=p.slice(i+1)});"
     "var sc=+o.scale||180;"
     "d('s',o.sound);d('m',o.mouth);d('rw',o.raw);d('pp',o.pp);"
+    "d('ppr',o.ppraw);d('thr',o.thr);d('avg',o.avg);d('smp',o.samples);"
     "d('h',o.head=='1'?'active':'idle');"
+    "d('t',o.tail=='1'?'flapping':'idle');"
     "d('sp',o.speaking=='1'?'speech':'microphone');"
     "d('up','uptime '+o.uptime);"
     "document.getElementById('sb').style.width=Math.min(100,(+o.sound)*100/sc)+'%';"
@@ -286,17 +375,23 @@ static void handle(WiFiClient& client, const String& target) {
   } else if (path == "/motor") {
     String mv = queryValue(query, "m");
     String sv = queryValue(query, "speed");
-    String dv = queryValue(query, "dir");
     String tv = queryValue(query, "ms");
+
+    // An explicit dir= is rejected rather than ignored. Silently running forward
+    // on dir=-1 would look like the reverse test worked and the motor failed.
+    if (queryValue(query, "dir").length()) {
+      sendText(client, "400 Bad Request",
+               F("dir is not supported - the motors are forward-only\n"));
+      return;
+    }
 
     bool ok = motorTestRequest(
       (uint8_t)mv.toInt(),
       sv.length() ? (int)sv.toInt() : 220,
-      dv.length() ? (int)dv.toInt() : 1,
       tv.length() ? (unsigned long)tv.toInt() : 1200);
 
     if (!ok) {
-      sendText(client, "400 Bad Request", F("use m=1|2, speed=0-255, dir=1|-1, ms>0\n"));
+      sendText(client, "400 Bad Request", F("use m=1|2|3, speed=0-255, ms>0\n"));
       return;
     }
     if (fromUi) { redirectHome(client); return; }

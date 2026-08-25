@@ -102,6 +102,13 @@ static void publishDiscovery() {
   doc += "}";
   client.publish("homeassistant/binary_sensor/billybass/head/config", doc.c_str(), true);
 
+  doc = "{\"name\":\"Tail\",\"uniq_id\":\"billybass_tail\",";
+  doc += "\"stat_t\":\"billybass/telemetry\",\"avty_t\":\"billybass/status\",";
+  doc += "\"val_tpl\":\"{{ value_json.tail }}\",\"dev_cla\":\"motion\",";
+  doc += device;
+  doc += "}";
+  client.publish("homeassistant/binary_sensor/billybass/tail/config", doc.c_str(), true);
+
   // A text entity, so Home Assistant renders a box you can type a line into and
   // the fish mouths it. Also the target for automations and notify actions.
   doc = "{\"name\":\"Say\",\"uniq_id\":\"billybass_say\",";
@@ -161,6 +168,7 @@ void mqttLoop() {
   body += "{\"sound\":";  body += t.soundLevel;
   body += ",\"mouth\":";  body += t.mouthSpeed;
   body += ",\"head\":\""; body += (t.headActive ? "ON" : "OFF");
+  body += "\",\"tail\":\""; body += (t.tailActive ? "ON" : "OFF");
   body += "\",\"uptime\":"; body += (now / 1000);
   body += "}";
 
