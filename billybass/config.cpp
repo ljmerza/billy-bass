@@ -16,6 +16,7 @@ static const char* K_HEADSPD = "headspd";
 static const char* K_HEADMV  = "headmv";
 static const char* K_HEADHLD = "headhld";
 static const char* K_HEADTMO = "headtmo";
+static const char* K_TAILEN  = "tailen";
 static const char* K_TAILSPD = "tailspd";
 static const char* K_TAILMS  = "tailms";
 static const char* K_SPKDLY  = "spkdly";
@@ -41,6 +42,7 @@ void configBegin(const BassConfig& d) {
   cfg.headMoveMs     = prefs.getULong(K_HEADMV, d.headMoveMs);
   cfg.headHoldSpeed  = prefs.getInt(K_HEADHLD, d.headHoldSpeed);
   cfg.headTimeoutMs  = prefs.getULong(K_HEADTMO, d.headTimeoutMs);
+  cfg.tailEnabled    = prefs.getInt(K_TAILEN, d.tailEnabled);
   cfg.tailSpeed      = prefs.getInt(K_TAILSPD, d.tailSpeed);
   cfg.tailFlapMs     = prefs.getULong(K_TAILMS, d.tailFlapMs);
   cfg.speakDelayMs   = prefs.getULong(K_SPKDLY, d.speakDelayMs);
@@ -82,6 +84,9 @@ bool configSet(const char* key, long value) {
   } else if (!strcmp(key, K_HEADTMO)) {
     if (value < 0 || value > 600000) return false;
     cfg.headTimeoutMs = (unsigned long)value;
+  } else if (!strcmp(key, K_TAILEN)) {
+    if (value < 0 || value > 1) return false;
+    cfg.tailEnabled = (int)value;
   } else if (!strcmp(key, K_TAILSPD)) {
     if (value < 0 || value > 255) return false;
     cfg.tailSpeed = (int)value;
@@ -139,6 +144,7 @@ void configSave() {
   prefs.putULong(K_HEADMV, cfg.headMoveMs);
   prefs.putInt(K_HEADHLD, cfg.headHoldSpeed);
   prefs.putULong(K_HEADTMO, cfg.headTimeoutMs);
+  prefs.putInt(K_TAILEN, cfg.tailEnabled);
   prefs.putInt(K_TAILSPD, cfg.tailSpeed);
   prefs.putULong(K_TAILMS, cfg.tailFlapMs);
   prefs.putULong(K_SPKDLY, cfg.speakDelayMs);
@@ -174,6 +180,8 @@ void configFormat(String& dst) {
   dst += K_HEADHLD; dst += '=';  dst += cfg.headHoldSpeed;
   dst += ' ';
   dst += K_HEADTMO; dst += '=';  dst += cfg.headTimeoutMs;
+  dst += ' ';
+  dst += K_TAILEN;  dst += '=';  dst += cfg.tailEnabled;
   dst += ' ';
   dst += K_TAILSPD; dst += '=';  dst += cfg.tailSpeed;
   dst += ' ';

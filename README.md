@@ -35,7 +35,7 @@ Based on code by Donald Bell, Maker Project Lab (2016).
 2. When the mapped sensor value exceeds a threshold of 30, the mouth and head motors activate
 3. The mouth motor ramps speed from 140 to 254, then releases
 4. The head motor drives out for 400ms - that stroke length is what sets how far the head comes out - then drops to a lower holding speed. It releases 3 seconds after the last sound and the return spring pulls it back in
-5. While the fish is speaking, the tail flaps - driven for 150ms, released for 150ms, repeating
+5. While the fish is speaking, the tail flaps - driven for 150ms, released for 150ms, repeating. The tail can be switched off on its own, leaving the mouth and head working
 
 ## Motors Are Forward-Only
 

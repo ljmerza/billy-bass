@@ -232,6 +232,10 @@ static void sendPage(WiFiClient& client) {
   };
 
   const Field tail[] = {
+    { "tailen",  "Tail enabled (0/1)", c.tailEnabled,
+      "0 parks the tail and leaves the mouth and head working - for a quieter fish, or to "
+      "take a suspect tail motor out of the picture while tuning. Switching it off mid-flap "
+      "releases the motor rather than leaving it energised." },
     { "tailspd", "Tail speed", c.tailSpeed,
       "Drive PWM while the tail flaps, 0-255." },
     { "tailms",  "Tail flap (ms)", (long)c.tailFlapMs,

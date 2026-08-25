@@ -33,6 +33,7 @@ const unsigned long HEAD_MOVE_MS = 400; // Drive stroke length - sets how far th
 const int HEAD_HOLD_SPEED  = 120;       // Speed that holds the head out afterwards (0 = let it fall back)
 const int MOUTH_SPEED_MIN  = 140;       // Minimum mouth motor speed when sound detected
 const int MOUTH_SPEED_MAX  = 254;       // Maximum mouth motor speed at loudest sound
+const int TAIL_ENABLED     = 1;         // 0 parks the tail and leaves the rest working
 const int TAIL_SPEED       = 200;       // Tail motor speed while flapping (0-255)
 const unsigned long TAIL_FLAP_MS = 150; // Drive stroke, then an equal release stroke
 
@@ -64,7 +65,7 @@ const unsigned long TELEMETRY_INTERVAL_MS = 1000;
 const BassConfig DEFAULT_CONFIG = {
   SOUND_THRESHOLD, MOUTH_SPEED_MIN, MOUTH_SPEED_MAX,
   HEAD_SPEED, HEAD_MOVE_MS, HEAD_HOLD_SPEED, HEAD_TIMEOUT_MS,
-  TAIL_SPEED, TAIL_FLAP_MS,
+  TAIL_ENABLED, TAIL_SPEED, TAIL_FLAP_MS,
   0,      // speakDelayMs - raise to line the mouth up with audio played elsewhere
   100,    // speakRatePct - 100 is normal speaking pace
   300,    // ppFullScale - raw ADC swing treated as full volume
@@ -164,7 +165,9 @@ void updateHead(bool triggered, unsigned long now) {
 void updateTail(bool speaking) {
   const BassConfig& cfg = config();
 
-  if (!speaking) {
+  // Switching the tail off mid-flap takes the same path as falling silent, so
+  // the motor is released rather than left energised at the end of a stroke.
+  if (!speaking || !cfg.tailEnabled) {
     if (tailFlapping) {
       tailMotor->run(RELEASE);
       tailFlapping = false;

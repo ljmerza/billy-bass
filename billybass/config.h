@@ -30,7 +30,10 @@ struct BassConfig {
   // Tail. It flaps while the fish is talking: driven forward for tailFlapMs,
   // then released for tailFlapMs so the return spring pulls it back. Forward
   // and release only - the tail has the same spring-and-stop mechanism as the
-  // mouth and head, so there is nothing to reverse into.
+  // mouth and head, so there is nothing to reverse into. tailEnabled 0 parks it
+  // and leaves the mouth and head working, for a quieter fish or to take a
+  // suspect tail motor out of the picture while tuning.
+  int tailEnabled;
   int tailSpeed;
   unsigned long tailFlapMs;
 
