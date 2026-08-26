@@ -19,4 +19,13 @@ void mqttBegin();
 // interval; never blocks longer than one connect attempt.
 void mqttLoop();
 
+// Publishes one button event immediately, outside the telemetry interval. A
+// press lasts a fraction of the gap between scheduled publishes, so folding it
+// into the periodic snapshot would miss it almost every time.
+//
+// eventType must be one of the strings the entity declares in event_types.
+// Dropped silently when the broker is not connected: a press is a moment, and
+// there is nothing useful to deliver about it later.
+void mqttPublishButton(const char* eventType);
+
 bool mqttConnected();

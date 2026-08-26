@@ -23,11 +23,14 @@ Based on code by Donald Bell, Maker Project Lab (2016).
 | A0 | Analog Input | Sound sensor signal |
 | 5V | Power | Sound sensor VCC |
 | GND | Ground | Sound sensor GND |
+| D2 | Digital Input | Momentary button, other side to GND |
 | A4 (SDA) | I2C Data | Motor Shield (via headers) |
 | A5 (SCL) | I2C Clock | Motor Shield (via headers) |
 | Shield M1 | Motor Port 1 | Mouth motor |
 | Shield M2 | Motor Port 2 | Head motor |
 | Shield M3 | Motor Port 3 | Tail motor |
+
+The button is wired to **ground**, not to 5V, and read with the internal pull-up: the pin idles high and a press pulls it low. Feeding it from 5V leaves the pin floating whenever the button is not pressed, and a floating input reads pressed at random - the RA4M1 has internal pull-ups but no pull-downs, so that wiring cannot be fixed in firmware.
 
 ## How It Works
 

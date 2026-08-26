@@ -67,6 +67,40 @@ struct BassConfig {
   // one setting. 0 disables it and leaves soundThreshold as the only gate;
   // soundThreshold is always the floor, so this can only raise the bar.
   int adaptPct;
+
+  // Quiet head drive. The shield chops its PWM at about 1.5kHz - the middle of
+  // the voice band - and the head is the one motor held on for seconds at a
+  // time, so a part-speed hold puts a steady buzz on the ground the audio amp
+  // shares. Full on and released are the only two settings that do not switch.
+  // headQuiet 1 uses just those, and gets a partial hold by alternating them:
+  // energised for headHoldOnMs, then released for headHoldOffMs, repeating, so
+  // torque averages over that cycle instead of over each PWM period. headSpeed
+  // and headHoldSpeed do not apply in this mode - the stroke runs full on, so
+  // headMoveMs alone sets how far the head swings out, and the on/off ratio
+  // sets how firmly it is held there. 0 restores the proportional PWM drive,
+  // for comparison.
+  int headQuiet;
+  unsigned long headHoldOnMs;
+  unsigned long headHoldOffMs;
+
+  // What makes the tail flap. 0 is speech only - it moves for a /speak
+  // utterance and stays still for everything else, so it never reacts to the
+  // microphone. 1 also flaps it whenever the head is out, which is the fish's
+  // "reacting to sound" window: the head latches on the first sound over the
+  // threshold and holds until headTimeoutMs after the last one. Riding that
+  // latch rather than the raw threshold is deliberate - the level crosses back
+  // and forth several times a second on real audio, and gating the tail on it
+  // directly would abandon every drive stroke halfway and leave the tail
+  // twitching instead of flapping.
+  int tailSoundDriven;
+
+  // How long the button has to be held to count as a long press rather than a
+  // short one. The gesture is decided when you let go, so this is compared
+  // against the finished press - there is no partial firing on the way down.
+  // Appended at the end: DEFAULT_CONFIG in billybass.ino is a positional
+  // initializer, so a field inserted anywhere else silently shifts every value
+  // after it.
+  unsigned long btnLongMs;
 };
 
 // Loads persisted values, falling back to defaults for anything unset.

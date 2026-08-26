@@ -19,11 +19,23 @@ struct Telemetry {
   int average;         // running mean of the level
   int threshold;       // level the mouth actually had to clear this pass
   bool speaking;       // synthesised envelope is driving, not the ADC
+
+  // Button. Reported raw and uninterpreted - nothing acts on it yet, so this
+  // is how you confirm it is actually wired before writing anything that
+  // depends on it.
+  bool button;            // debounced, true while held
+  uint16_t presses;       // button presses since boot
 };
 
 void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActive,
                   int raw, int peakToPeak, int rawPeakToPeak, int samples,
                   int average, int threshold, bool speaking);
+
+// Separate from telemetrySet() because the button is sampled before the paths
+// that can return early - a motor test, safe mode - and so stays live on
+// /status when the sound and motor fields do not.
+void telemetrySetInputs(bool button, uint16_t presses);
+
 const Telemetry& telemetry();
 
 // Full-scale sound level, so consumers can render a meter without hardcoding
@@ -32,5 +44,5 @@ void telemetrySetScale(int fullScale);
 int telemetryScale();
 
 // Appends "sound=.. mouth=.. head=.. tail=.. raw=.. pp=.. ppraw=.. samples=..
-// avg=.. thr=.. speaking=.. scale=.. uptime=..s".
+// avg=.. thr=.. speaking=.. scale=.. uptime=..s btn=.. btnn=..".
 void telemetryFormat(String& dst);

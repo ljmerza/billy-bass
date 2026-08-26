@@ -15,6 +15,7 @@ static const char* T_CONFIG    = "billybass/config";
 static const char* T_CONFIG_SET = "billybass/config/set";
 static const char* T_SPEAK     = "billybass/speak";
 static const char* T_SPEAK_STATE = "billybass/speak/state";
+static const char* T_BUTTON    = "billybass/button";
 
 static const unsigned long RECONNECT_MS = 15000;
 static const unsigned long PUBLISH_MS   = 2000;
@@ -109,6 +110,24 @@ static void publishDiscovery() {
   doc += "}";
   client.publish("homeassistant/binary_sensor/billybass/tail/config", doc.c_str(), true);
 
+  // An event entity rather than a binary_sensor. A press is a moment, not a
+  // state: it is over in a fraction of the telemetry interval, so a sensor
+  // sampled on that interval would miss nearly every one. This entity is fed by
+  // its own immediate publish instead, shows up in Home Assistant with history
+  // so presses can be confirmed before any automation exists, and is pickable
+  // as an automation trigger on its event_type.
+  //
+  // "event_types" is spelled out rather than abbreviated - the abbreviations
+  // used above are ones this code already relies on, and there is no reason to
+  // guess at one here.
+  doc = "{\"name\":\"Button\",\"uniq_id\":\"billybass_button\",";
+  doc += "\"stat_t\":\"billybass/button\",\"avty_t\":\"billybass/status\",";
+  doc += "\"dev_cla\":\"button\",";
+  doc += "\"event_types\":[\"press\",\"long_press\"],";
+  doc += device;
+  doc += "}";
+  client.publish("homeassistant/event/billybass/button/config", doc.c_str(), true);
+
   // A text entity, so Home Assistant renders a box you can type a line into and
   // the fish mouths it. Also the target for automations and notify actions.
   doc = "{\"name\":\"Say\",\"uniq_id\":\"billybass_say\",";
@@ -173,6 +192,21 @@ void mqttLoop() {
   body += "}";
 
   client.publish(T_TELEMETRY, body.c_str());
+}
+
+void mqttPublishButton(const char* eventType) {
+  if (!enabled || !client.connected()) return;
+
+  // Not retained: Home Assistant discards replayed retained messages on an
+  // event entity, so retaining one would buy nothing and only leave a stale
+  // press sitting on the broker.
+  String body;
+  body.reserve(40);
+  body = "{\"event_type\":\"";
+  body += eventType;
+  body += "\"}";
+
+  client.publish(T_BUTTON, body.c_str());
 }
 
 bool mqttConnected() {

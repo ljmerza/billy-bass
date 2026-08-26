@@ -26,12 +26,14 @@ of a phrase. See `articulate` / `mouthon` / `mouthof` in the config.
 ## Uploading firmware
 
 The board is on WiFi and takes OTA updates. There is usually no USB connection.
+Its address is **`192.168.1.182`** (DHCP, so confirm it if the board stops
+answering: sweep the LAN for TCP 65280 open, which is the OTA port).
 
 ```
 arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi --output-dir /tmp/bb-build billybass
 
 ~/.arduino15/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA \
-  -address <board-ip> -port 65280 \
+  -address 192.168.1.182 -port 65280 \
   -username arduino -password "$SECRET_OTA_PASS" \
   -sketch /tmp/bb-build/billybass.ino.bin -upload /sketch -b -v
 ```
@@ -54,7 +56,7 @@ platform has no network upload recipe.
 
 Everything is live-tunable without reflashing: `GET /config?key=value`, and
 `GET /status` returns telemetry plus the current config. There is a web UI at
-the board's address.
+the board's address, <http://192.168.1.182/>.
 
 When retuning the audio path, `ppmax` must track the actual signal. If `pp`
 exceeds `ppmax` the level saturates at full scale, all per-word dynamics are

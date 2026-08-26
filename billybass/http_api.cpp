@@ -166,6 +166,8 @@ static void sendPage(WiFiClient& client) {
     "<div class=r><span>running mean</span><span id=avg>-</span></div>"
     "<div class=r><span>samples/window</span><span id=smp>-</span></div>"
     "<div class=r><span>source</span><span id=sp>-</span></div>"
+    "<div class=r><span>button</span><span id=bt>-</span></div>"
+    "<div class=r><span>button presses</span><span id=btc>-</span></div>"
     "<div class=btns><a class='b g' href=/i2c>Scan I2C bus</a></div></div>"));
 
   // Say
@@ -224,9 +226,17 @@ static void sendPage(WiFiClient& client) {
   };
 
   const Field head[] = {
+    { "headq",   "Quiet drive (0/1)", c.headQuiet,
+      "1 drives the head with only the two settings that do not switch - full on and "
+      "released - because the shield chops its PWM at about 1.5kHz, right in the voice band, "
+      "and the head is the one motor held on for seconds at a time. A part-speed hold puts "
+      "that buzz on the ground the audio amp shares, which is audible on the speaker. Head "
+      "speed and head hold power are ignored while this is on: the stroke runs full on, so "
+      "head travel alone sets how far the head swings, and the hold on/off pair sets how "
+      "firmly it stays there. 0 restores the proportional drive, for comparison." },
     { "headspd", "Head speed", c.headSpeed,
       "Drive PWM during the head's stroke, 0-255. Higher swings it out faster and harder "
-      "against the stop." },
+      "against the stop. Ignored while quiet drive is on - the stroke runs full on." },
     { "headmv",  "Head travel (ms)", (long)c.headMoveMs,
       "How long the motor drives to swing the head out, 0-5000. Nothing measures where the "
       "head is, so this stroke length is what sets how far it comes out - longer means "
@@ -234,13 +244,31 @@ static void sendPage(WiFiClient& client) {
     { "headhld", "Head hold power", c.headHoldSpeed,
       "PWM that holds the head out once the stroke ends, 0-255. Enough to beat the return "
       "spring without stalling at full power the whole time it is out. 0 lets the spring "
-      "pull it straight back." },
+      "pull it straight back. Ignored while quiet drive is on - the hold on/off pair sets "
+      "the holding torque instead." },
+    { "headhon", "Hold on (ms)", (long)c.headHoldOnMs,
+      "Energised half of the quiet hold cycle, 0 or 20-1000. Together with the released half "
+      "this sets the average holding torque - 30 on against 40 off is about 43%, close to "
+      "what a hold power of 120 used to give. 0 means no hold at all, the same as a hold "
+      "power of 0: the stroke ends and the spring takes the head straight back." },
+    { "headhof", "Hold off (ms)", (long)c.headHoldOffMs,
+      "Released half of the quiet hold cycle, 20-2000. Longer means less average torque and "
+      "more visible sag between drives; shorter holds the head steadier but transitions more "
+      "often. The whole cycle wants to stay well under the head's own settling time, so keep "
+      "the pair short rather than scaling both up." },
     { "headtmo", "Stay out (ms)", (long)c.headTimeoutMs,
       "How long the head stays out after the last sound, 0-600000, before the motor releases "
       "and the spring pulls it in. New sound restarts the clock." }
   };
 
   const Field tail[] = {
+    { "tailsnd", "Tail on sound (0/1)", c.tailSoundDriven,
+      "1 flaps the tail whenever the head is out - the fish's reacting-to-sound window - as "
+      "well as during a /speak utterance. 0 is speech only, which means the tail never "
+      "responds to the microphone and sits still through any amount of audio. It rides the "
+      "head's latch rather than the raw threshold because the level crosses back and forth "
+      "several times a second on real audio, and gating on that directly would abandon every "
+      "drive stroke halfway and leave the tail twitching." },
     { "tailen",  "Tail enabled (0/1)", c.tailEnabled,
       "0 parks the tail and leaves the mouth and head working - for a quieter fish, or to "
       "take a suspect tail motor out of the picture while tuning. Switching it off mid-flap "
@@ -271,11 +299,21 @@ static void sendPage(WiFiClient& client) {
       "window the return spring uses to shut the mouth." }
   };
 
+  const Field button[] = {
+    { "btnlong", "Long press (ms)", (long)c.btnLongMs,
+      "How long the button has to be held to publish long_press instead of press, 200-5000. "
+      "The gesture is decided when you let go, so one press sends exactly one event and an "
+      "automation on a short press never also fires partway through a long one. Nothing on "
+      "the fish acts on either - both go to Home Assistant as the Button entity's event "
+      "type, and the automation lives there." }
+  };
+
   const Section sections[] = {
     { "General", general, sizeof(general) / sizeof(general[0]) },
     { "Head",    head,    sizeof(head)    / sizeof(head[0])    },
     { "Tail",    tail,    sizeof(tail)    / sizeof(tail[0])    },
-    { "Mouth",   mouth,   sizeof(mouth)   / sizeof(mouth[0])   }
+    { "Mouth",   mouth,   sizeof(mouth)   / sizeof(mouth[0])   },
+    { "Button",  button,  sizeof(button)  / sizeof(button[0])  }
   };
 
   for (uint8_t s = 0; s < sizeof(sections) / sizeof(sections[0]); s++) {
@@ -315,6 +353,8 @@ static void sendPage(WiFiClient& client) {
     "d('h',o.head=='1'?'active':'idle');"
     "d('t',o.tail=='1'?'flapping':'idle');"
     "d('sp',o.speaking=='1'?'speech':'microphone');"
+    "d('bt',o.btn=='1'?'pressed':'up');"
+    "d('btc',o.btnn);"
     "d('up','uptime '+o.uptime);"
     "document.getElementById('sb').style.width=Math.min(100,(+o.sound)*100/sc)+'%';"
     "}).catch(function(){})}"

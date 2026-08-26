@@ -1,6 +1,9 @@
 #include "telemetry.h"
 
-static Telemetry latest = { 0, 0, false, false, 0, 0, 0, 0, 0, 0, false };
+// Positional aggregate initializer - it has to track the field order in
+// Telemetry, so new fields go on the end of the struct and on the end here.
+static Telemetry latest = { 0, 0, false, false, 0, 0, 0, 0, 0, 0, false,
+                            false, 0 };
 static int scale = 180;
 
 void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActive,
@@ -17,6 +20,11 @@ void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActi
   latest.average = average;
   latest.threshold = threshold;
   latest.speaking = speaking;
+}
+
+void telemetrySetInputs(bool button, uint16_t presses) {
+  latest.button = button;
+  latest.presses = presses;
 }
 
 const Telemetry& telemetry() {
@@ -45,4 +53,6 @@ void telemetryFormat(String& dst) {
   dst += " speaking="; dst += latest.speaking ? 1 : 0;
   dst += " scale="; dst += scale;
   dst += " uptime="; dst += (millis() / 1000); dst += 's';
+  dst += " btn=";   dst += latest.button ? 1 : 0;
+  dst += " btnn=";  dst += latest.presses;
 }

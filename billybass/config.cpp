@@ -27,6 +27,11 @@ static const char* K_ADAPT   = "adapt";
 static const char* K_ARTIC   = "artic";
 static const char* K_MOUTHON = "mouthon";
 static const char* K_MOUTHOF = "mouthof";
+static const char* K_HEADQ   = "headq";
+static const char* K_HEADHON = "headhon";
+static const char* K_HEADHOF = "headhof";
+static const char* K_TAILSND = "tailsnd";
+static const char* K_BTNLONG = "btnlong";
 
 void configBegin(const BassConfig& d) {
   defaults = d;
@@ -53,6 +58,11 @@ void configBegin(const BassConfig& d) {
   cfg.articulate     = prefs.getInt(K_ARTIC, d.articulate);
   cfg.mouthOnMs      = prefs.getULong(K_MOUTHON, d.mouthOnMs);
   cfg.mouthOffMs     = prefs.getULong(K_MOUTHOF, d.mouthOffMs);
+  cfg.headQuiet      = prefs.getInt(K_HEADQ, d.headQuiet);
+  cfg.headHoldOnMs   = prefs.getULong(K_HEADHON, d.headHoldOnMs);
+  cfg.headHoldOffMs  = prefs.getULong(K_HEADHOF, d.headHoldOffMs);
+  cfg.tailSoundDriven = prefs.getInt(K_TAILSND, d.tailSoundDriven);
+  cfg.btnLongMs      = prefs.getULong(K_BTNLONG, d.btnLongMs);
   prefs.end();
 }
 
@@ -120,6 +130,28 @@ bool configSet(const char* key, long value) {
   } else if (!strcmp(key, K_MOUTHOF)) {
     if (value < 20 || value > 1000) return false;
     cfg.mouthOffMs = (unsigned long)value;
+  } else if (!strcmp(key, K_HEADQ)) {
+    if (value < 0 || value > 1) return false;
+    cfg.headQuiet = (int)value;
+  } else if (!strcmp(key, K_HEADHON)) {
+    // 0 means no hold at all, the same as headHoldSpeed 0: the stroke ends and
+    // the spring takes the head straight back. Anything positive has the same
+    // 20ms floor as the mouth pulse - below that the gear train never moves.
+    if (value != 0 && (value < 20 || value > 1000)) return false;
+    cfg.headHoldOnMs = (unsigned long)value;
+  } else if (!strcmp(key, K_HEADHOF)) {
+    // Floor of 20ms rather than 0: a zero release turns the cycle back into a
+    // continuous stall at full power, which is what the hold exists to avoid.
+    if (value < 20 || value > 2000) return false;
+    cfg.headHoldOffMs = (unsigned long)value;
+  } else if (!strcmp(key, K_TAILSND)) {
+    if (value < 0 || value > 1) return false;
+    cfg.tailSoundDriven = (int)value;
+  } else if (!strcmp(key, K_BTNLONG)) {
+    // Floor of 200ms: below that an ordinary press starts registering as a
+    // hold. Ceiling of 5000 so a long press cannot become unreachable.
+    if (value < 200 || value > 5000) return false;
+    cfg.btnLongMs = (unsigned long)value;
   } else if (!strcmp(key, K_PPMAX)) {
     if (value < 10 || value > 4095) return false;
     cfg.ppFullScale = (int)value;
@@ -155,6 +187,11 @@ void configSave() {
   prefs.putInt(K_ARTIC, cfg.articulate);
   prefs.putULong(K_MOUTHON, cfg.mouthOnMs);
   prefs.putULong(K_MOUTHOF, cfg.mouthOffMs);
+  prefs.putInt(K_HEADQ, cfg.headQuiet);
+  prefs.putULong(K_HEADHON, cfg.headHoldOnMs);
+  prefs.putULong(K_HEADHOF, cfg.headHoldOffMs);
+  prefs.putInt(K_TAILSND, cfg.tailSoundDriven);
+  prefs.putULong(K_BTNLONG, cfg.btnLongMs);
   prefs.end();
 
   dirty = false;
@@ -202,4 +239,14 @@ void configFormat(String& dst) {
   dst += K_MOUTHON; dst += '=';  dst += cfg.mouthOnMs;
   dst += ' ';
   dst += K_MOUTHOF; dst += '=';  dst += cfg.mouthOffMs;
+  dst += ' ';
+  dst += K_HEADQ;   dst += '=';  dst += cfg.headQuiet;
+  dst += ' ';
+  dst += K_HEADHON; dst += '=';  dst += cfg.headHoldOnMs;
+  dst += ' ';
+  dst += K_HEADHOF; dst += '=';  dst += cfg.headHoldOffMs;
+  dst += ' ';
+  dst += K_TAILSND; dst += '=';  dst += cfg.tailSoundDriven;
+  dst += ' ';
+  dst += K_BTNLONG; dst += '=';  dst += cfg.btnLongMs;
 }

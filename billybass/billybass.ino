@@ -20,9 +20,16 @@
 #include "speech.h"
 #include "sound.h"
 #include "motortest.h"
+#include "inputs.h"
 
 // ----- Pin Configuration -----
 const int SOUND_PIN = A0;               // Analog pin for sound sensor input
+const int BUTTON_PIN = 2;               // Momentary switch to GND, read with the internal pull-up
+const unsigned long BUTTON_LONG_MS = 700;  // Held at least this long counts as a long press
+// The motor shield is entirely I2C and takes nothing but SDA, SCL and power,
+// so every digital pin is free. D3 was to be a motion sensor; the part in the
+// fish turned out to have two wires, which rules out any PIR module, so it is
+// unwired until it has been identified.
 
 // ----- Motor Configuration -----
 const int MOUTH_MOTOR_PORT = 1;         // Motor shield port for mouth
@@ -31,11 +38,15 @@ const int TAIL_MOTOR_PORT  = 3;         // Motor shield port for tail
 const int HEAD_SPEED       = 254;       // Head drive speed during the stroke (0-255)
 const unsigned long HEAD_MOVE_MS = 400; // Drive stroke length - sets how far the head swings out
 const int HEAD_HOLD_SPEED  = 120;       // Speed that holds the head out afterwards (0 = let it fall back)
+const int HEAD_QUIET       = 1;         // 1 = drive the head full-on/released only, never a part-speed PWM
+const unsigned long HEAD_HOLD_ON_MS  = 30;  // Energised half of the quiet hold cycle
+const unsigned long HEAD_HOLD_OFF_MS = 40;  // Released half - 30/40 averages the ~47% HEAD_HOLD_SPEED held at
 const int MOUTH_SPEED_MIN  = 140;       // Minimum mouth motor speed when sound detected
 const int MOUTH_SPEED_MAX  = 254;       // Maximum mouth motor speed at loudest sound
 const int TAIL_ENABLED     = 1;         // 0 parks the tail and leaves the rest working
 const int TAIL_SPEED       = 200;       // Tail motor speed while flapping (0-255)
 const unsigned long TAIL_FLAP_MS = 150; // Drive stroke, then an equal release stroke
+const int TAIL_SOUND_DRIVEN = 1;        // 1 flaps the tail on sound too, not only during /speak
 
 // Every motor here drives one way against a return spring and a hard stop. The
 // spring provides the return; a reversal just stalls the motor into the stop and
@@ -75,7 +86,10 @@ const BassConfig DEFAULT_CONFIG = {
   1,      // articulate - pulse the mouth rather than holding it open
   90,     // mouthOnMs - length of one mouth pulse
   70,     // mouthOffMs - guaranteed closed time between pulses
-  115     // adaptPct - open on peaks 15% above the running mean
+  115,    // adaptPct - open on peaks 15% above the running mean
+  HEAD_QUIET, HEAD_HOLD_ON_MS, HEAD_HOLD_OFF_MS,
+  TAIL_SOUND_DRIVEN,
+  BUTTON_LONG_MS
 };
 
 // ----- Globals -----
@@ -89,6 +103,44 @@ unsigned long lastSoundTime = 0;
 // hold halves can be told apart without a second flag.
 bool headActive = false;
 unsigned long headDriveAt = 0;
+
+// Quiet-hold state: whether the motor is energised in the current half of the
+// on/off hold cycle, and when that half started.
+bool headHoldOn = false;
+unsigned long headHoldAt = 0;
+
+// What the head motor was last driven with, so the shield is only written when
+// it actually changes. Every write is an I2C transaction at 100kHz - the old
+// code re-sent the speed on every pass, which is one; a full-on drive needs
+// three, and paying that every pass while the head is out coarsens the mouth
+// pulse timing and the sound sampling window. HEAD_DRIVE_* below are the two
+// non-PWM settings; anything else is a plain 0-255 speed.
+const int HEAD_DRIVE_RELEASED = -1;
+const int HEAD_DRIVE_FULL_ON  = -2;
+int headDriveState = HEAD_DRIVE_RELEASED;
+
+// Single point of contact with the head motor. Skipping unchanged writes is
+// also what lets updateHead() state what it wants every pass without caring
+// whether that is a change - including after a live cfg.headQuiet flip, which
+// changes the requested state and so re-asserts the drive on its own.
+void headDrive(int state) {
+  if (state == headDriveState) return;
+
+  const bool wasReleased = (headDriveState == HEAD_DRIVE_RELEASED);
+  headDriveState = state;
+
+  if (state == HEAD_DRIVE_RELEASED) {
+    headMotor->run(RELEASE);
+    return;
+  }
+
+  if (state == HEAD_DRIVE_FULL_ON) headMotor->fullOn();
+  else headMotor->setSpeed(state);
+
+  // Only when coming back from released: run() rewrites both direction pins,
+  // and re-sending them on a speed change is two I2C transactions for nothing.
+  if (wasReleased) headMotor->run(FORWARD);
+}
 
 // Tail flap state. tailFlapping is the whole cycle being live; tailDriving is
 // which half of it we are in - motor pulling, or released so the spring returns.
@@ -114,22 +166,40 @@ void releaseMotors() {
   mouthMotor->run(RELEASE);
   headMotor->run(RELEASE);
   tailMotor->run(RELEASE);
+  headDriveState = HEAD_DRIVE_RELEASED;   // written behind headDrive()'s back
   headActive = false;
+  headHoldOn = false;
   mouthDriving = false;
   tailFlapping = false;
   tailDriving = false;
 }
 
 // Swings the head out and holds it there. Nothing reports where the head
-// actually is, so travel is timed instead of measured: cfg.headSpeed for
-// cfg.headMoveMs is the stroke, and a longer stroke pulls the head further out
-// until it meets its stop. The speed then drops to cfg.headHoldSpeed, enough to
-// hold against the return spring without stalling the gear train at full power
-// for the whole time the head is out. Once cfg.headTimeoutMs has passed since
-// the last sound the motor releases and the spring takes the head back in.
+// actually is, so travel is timed instead of measured: the stroke runs for
+// cfg.headMoveMs, and a longer stroke pulls the head further out until it meets
+// its stop. Once cfg.headTimeoutMs has passed since the last sound the motor
+// releases and the spring takes the head back in.
 //
-// Setting the speed every pass is also what makes cfg.headSpeed take effect
-// live - it used to be applied once in setup(), so a change over HTTP or MQTT
+// How it holds depends on cfg.headQuiet:
+//
+//   0 - the original proportional drive. cfg.headSpeed during the stroke, then
+//       cfg.headHoldSpeed, enough to beat the return spring without stalling
+//       the gear train at full power the whole time the head is out.
+//
+//   1 - full on or released, nothing in between. The shield's PCA9685 chops at
+//       about 1.5kHz, which sits in the middle of the voice band, and the head
+//       is the one motor energised for seconds at a time - so a part-speed hold
+//       puts a steady buzz on the ground the audio amp shares. Only two
+//       settings do not switch at all: full on, and released. This mode uses
+//       just those, and gets a partial hold by alternating them - energised for
+//       cfg.headHoldOnMs, released for cfg.headHoldOffMs, repeating - so torque
+//       averages over that cycle rather than over each PWM period. The head
+//       sags slightly on each released half and is pulled back on the next
+//       drive; a shorter cycle trades less sag for more transitions.
+//
+// This states the drive it wants on every pass and lets headDrive() discard the
+// ones that change nothing, which is what makes a live cfg change take effect -
+// the speed used to be applied once in setup(), so a change over HTTP or MQTT
 // did nothing until the next reboot.
 void updateHead(bool triggered, unsigned long now) {
   const BassConfig& cfg = config();
@@ -140,36 +210,61 @@ void updateHead(bool triggered, unsigned long now) {
     if (!headActive) {
       headActive = true;
       headDriveAt = now;
-      headMotor->setSpeed(cfg.headSpeed);
-      headMotor->run(FORWARD);
+      headHoldAt = now;
+      headHoldOn = true;
     }
   }
 
   if (!headActive) return;
 
   if (now - lastSoundTime >= cfg.headTimeoutMs) {
-    headMotor->run(RELEASE);
+    headDrive(HEAD_DRIVE_RELEASED);
     headActive = false;
+    headHoldOn = false;
     if (DEBUG) Serial.println("Head released (timeout)");
     return;
   }
 
-  // Drive stroke first, then hold. A hold speed of 0 leaves the motor running
-  // at zero duty, so the spring takes the head straight back in - the stay-out
-  // window still has to expire before a new stroke can start.
-  headMotor->setSpeed(now - headDriveAt < cfg.headMoveMs ? cfg.headSpeed
-                                                         : cfg.headHoldSpeed);
+  const bool stroking = (now - headDriveAt < cfg.headMoveMs);
+
+  if (!cfg.headQuiet) {
+    // Drive stroke first, then hold. A hold speed of 0 leaves the motor running
+    // at zero duty, so the spring takes the head straight back in - the stay-out
+    // window still has to expire before a new stroke can start.
+    headDrive(stroking ? cfg.headSpeed : cfg.headHoldSpeed);
+    return;
+  }
+
+  if (stroking) {
+    headHoldOn = true;
+    headHoldAt = now;               // the hold cycle starts when the stroke ends
+  } else if (cfg.headHoldOnMs == 0) {
+    // No hold at all, matching what cfg.headHoldSpeed 0 did: release and let the
+    // spring take the head back. The stay-out window still has to expire before
+    // a new stroke can start.
+    headHoldOn = false;
+  } else if (now - headHoldAt >= (headHoldOn ? cfg.headHoldOnMs
+                                             : cfg.headHoldOffMs)) {
+    headHoldAt = now;
+    headHoldOn = !headHoldOn;
+  }
+
+  headDrive(headHoldOn ? HEAD_DRIVE_FULL_ON : HEAD_DRIVE_RELEASED);
 }
 
-// Flaps the tail for as long as the fish is talking. A flap is a drive stroke
+// Flaps the tail for as long as the fish is animated. A flap is a drive stroke
 // followed by a release stroke the return spring completes - the tail swings
 // both ways, but the motor is only ever energised forward.
-void updateTail(bool speaking) {
+//
+// The caller decides what "animated" means: an utterance always counts, and
+// cfg.tailSoundDriven adds the window the head is out for, so the tail joins in
+// on sound rather than only on /speak.
+void updateTail(bool animated) {
   const BassConfig& cfg = config();
 
   // Switching the tail off mid-flap takes the same path as falling silent, so
   // the motor is released rather than left energised at the end of a stroke.
-  if (!speaking || !cfg.tailEnabled) {
+  if (!animated || !cfg.tailEnabled) {
     if (tailFlapping) {
       tailMotor->run(RELEASE);
       tailFlapping = false;
@@ -207,6 +302,7 @@ void setup() {
   configBegin(DEFAULT_CONFIG);
   speechBegin(SENSOR_MAP_MAX);   // speak in the same units the ADC maps to
   soundBegin(SOUND_PIN, SENSOR_MAP_MAX);
+  inputsBegin(BUTTON_PIN);
   telemetrySetScale(SENSOR_MAP_MAX);
 
   AFMS.begin();
@@ -269,6 +365,22 @@ void serviceNetwork() {
 void loop() {
   swatchdogPet();
   failsafeLoop();
+
+  // Sampled before every early return below, so the button still reports on
+  // /status during a motor test, during safe mode, and while the fish is
+  // otherwise doing nothing. Nothing acts on it yet.
+  inputsLoop();
+  telemetrySetInputs(buttonDown(), buttonPresses());
+
+  // The button is an input to Home Assistant, not to this sketch - nothing here
+  // acts on a press. It is published the instant the press ends, on its own
+  // topic, because a press is over long before the next scheduled telemetry
+  // publish and would otherwise fall between two of them unseen.
+  unsigned long heldMs;
+  if (buttonConsumeRelease(heldMs)) {
+    mqttPublishButton(heldMs >= config().btnLongMs ? "long_press" : "press");
+  }
+
   wifiOtaLoop(!headActive);
   serviceNetwork();
 
@@ -305,10 +417,6 @@ void loop() {
   bool speaking = speechActive();
   int sensorValue = speaking ? speechLevel() : soundLevel();
 
-  // The tail tracks the utterance, not the sound level - it flaps for as long
-  // as the fish is talking and holds still the rest of the time.
-  updateTail(speaking);
-
   // Adaptive threshold. Continuous audio never falls back to silence, so one
   // fixed number cannot suit both a quiet room and a loud track: set it low and
   // the mouth is pinned open, set it high and it never opens. Riding it on the
@@ -331,6 +439,16 @@ void loop() {
   const bool above = sensorValue > threshold;
 
   updateHead(above, currentMillis);
+
+  // Tail. Always flaps for an utterance; with cfg.tailSoundDriven it also flaps
+  // for as long as the head is out, which is the fish's reacting-to-sound
+  // window - the head latches on the first sound over the threshold and holds
+  // until cfg.headTimeoutMs after the last. Riding that latch rather than
+  // `above` is what keeps the tail flapping instead of twitching: the level
+  // crosses the threshold several times a second on real audio, and every
+  // crossing would otherwise abandon a drive stroke halfway. This runs after
+  // updateHead() so headActive reflects this pass rather than the last one.
+  updateTail(speaking || (cfg.tailSoundDriven && headActive));
 
   if (cfg.articulate) {
     // Pulsed. Holding the motor on for the length of a phrase never gives the
