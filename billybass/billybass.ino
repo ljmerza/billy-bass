@@ -68,7 +68,9 @@ const BassConfig DEFAULT_CONFIG = {
   TAIL_ENABLED, TAIL_SPEED, TAIL_FLAP_MS,
   0,      // speakDelayMs - raise to line the mouth up with audio played elsewhere
   100,    // speakRatePct - 100 is normal speaking pace
-  300,    // ppFullScale - raw ADC swing treated as full volume
+  230,    // ppFullScale - raw ADC swing treated as full volume; measured against
+          // real material the peak pp is ~208, so this leaves a little headroom
+          // without throwing away the top of the mouth-speed range
   1,      // voiceFilter - measure the 300-3000Hz band only
   1,      // articulate - pulse the mouth rather than holding it open
   90,     // mouthOnMs - length of one mouth pulse

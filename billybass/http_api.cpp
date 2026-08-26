@@ -7,7 +7,11 @@
 #include "motortest.h"
 
 static const unsigned long READ_TIMEOUT_MS = 500;
-static const size_t MAX_REQUEST_LINE = 200;
+// Long enough for the whole config form in one GET. Every field is submitted
+// together, so this grows with the number of config keys - at 18 fields the
+// request line is already past 200, which is what the old cap silently
+// truncated into a "malformed request".
+static const size_t MAX_REQUEST_LINE = 512;
 
 static WiFiServer server;
 static bool started = false;
@@ -199,14 +203,19 @@ static void sendPage(WiFiClient& client) {
       "Hard noise gate on the mapped level, 0-1023 (full scale is 180). Nothing moves until "
       "sound clears this. The adaptive percentage can raise the bar, never lower it." },
     { "ppmax",   "Full-scale swing", c.ppFullScale,
-      "Raw ADC peak-to-peak swing treated as full volume, 10-4095. Lower it for a quiet "
-      "source, raise it if the fish maxes out on everything." },
+      "Raw ADC peak-to-peak swing treated as full volume, 10-4095. It has to track the real "
+      "signal: once pp on /status runs above this the level saturates, per-word dynamics are "
+      "lost and every syllable slams the mouth identically. Raise it until the loudest "
+      "material sits just under; lower it for a quiet source." },
     { "voice",   "Voice filter (0/1)", c.voiceFilter,
       "1 measures only the 300-3000Hz voice band, 0 measures everything. Full-band readings "
       "stay high through a whole music track, which holds the mouth open." },
     { "adapt",   "Adaptive thresh (%)", c.adaptPct,
-      "Threshold as a percentage of the running mean level, 0-300. Over 100 means only peaks "
-      "above the mean count, which is what makes the mouth flap. 0 disables it." },
+      "Gate as a percentage of the running mean level, 0-300. It can only raise the bar above "
+      "the sound threshold, never lower it. Leave it at 0 while articulate is on: the pulse "
+      "train already supplies the open and close rhythm, and a high adaptive gate chases loud "
+      "continuous audio upward until only extreme peaks fire and the mouth skips words. It is "
+      "there for the plain proportional hold instead." },
     { "spkdly",  "Speak delay (ms)", (long)c.speakDelayMs,
       "Holds the mouth shut this long at the start of an utterance, 0-5000, so the animation "
       "can be lined up with audio another device is playing." },
@@ -454,12 +463,28 @@ void httpApiLoop() {
 
   // Subtraction, not `millis() < start + timeout`, so this still terminates
   // correctly across the millis() rollover.
+  bool truncated = false;
+
   while (client.connected() && millis() - start < READ_TIMEOUT_MS) {
     if (!client.available()) continue;
 
     char c = client.read();
     if (c == '\n') break;
-    if (c != '\r' && line.length() < MAX_REQUEST_LINE) line += c;
+    if (c == '\r') continue;
+
+    if (line.length() < MAX_REQUEST_LINE) line += c;
+    else truncated = true;      // keep draining, but remember it did not fit
+  }
+
+  // Truncation is reported for what it is. Silently cutting the line loses the
+  // trailing " HTTP/1.1", so the parse below finds no second space and the
+  // request comes back as "malformed" - which sends you looking at the query
+  // string instead of at its length.
+  if (truncated) {
+    sendText(client, "414 URI Too Long", F("request line over 512 bytes - split the config into two requests\n"));
+    client.flush();
+    client.stop();
+    return;
   }
 
   // "GET /path?query HTTP/1.1"
