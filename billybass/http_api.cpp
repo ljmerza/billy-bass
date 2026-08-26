@@ -10,8 +10,9 @@ static const unsigned long READ_TIMEOUT_MS = 500;
 // Long enough for the whole config form in one GET. Every field is submitted
 // together, so this grows with the number of config keys - at 18 fields the
 // request line is already past 200, which is what the old cap silently
-// truncated into a "malformed request".
-static const size_t MAX_REQUEST_LINE = 512;
+// truncated into a "malformed request". At 27 fields with worst-case values it
+// is around 400, so this keeps a real margin rather than the last few bytes.
+static const size_t MAX_REQUEST_LINE = 768;
 
 static WiFiServer server;
 static bool started = false;
@@ -166,6 +167,11 @@ static void sendPage(WiFiClient& client) {
     "<div class=r><span>running mean</span><span id=avg>-</span></div>"
     "<div class=r><span>samples/window</span><span id=smp>-</span></div>"
     "<div class=r><span>source</span><span id=sp>-</span></div>"
+    "<div class=r><span>pitch</span><span id=f0>-</span></div>"
+    "<div class=r><span>periodicity</span><span id=vc>-</span></div>"
+    "<div class=r><span>voiced / smooth / range</span><span id=vf>-</span></div>"
+    "<div class=r><span>voice score</span><span id=vs>-</span></div>"
+    "<div class=r><span>voice gate</span><span id=vo>-</span></div>"
     "<div class=r><span>button</span><span id=bt>-</span></div>"
     "<div class=r><span>button presses</span><span id=btc>-</span></div>"
     "<div class=btns><a class='b g' href=/i2c>Scan I2C bus</a></div></div>"));
@@ -299,6 +305,31 @@ static void sendPage(WiFiClient& client) {
       "window the return spring uses to shut the mouth." }
   };
 
+  const Field voice[] = {
+    { "vgate",  "Voice gate (0/1)", c.voiceGate,
+      "1 makes the pitch detector a precondition for reacting to the microphone: the mouth, "
+      "head and tail stay still unless the sound is periodic like a voice and its pitch is "
+      "moving like one. 0 leaves the detector running and reported on Live but gating "
+      "nothing, which is how you tune it - play the material you care about and watch the "
+      "score before switching this on. Speech from /speak is never gated. Expect the gate to "
+      "open about half a second after someone starts talking: the score is built from about "
+      "a second of pitch history and there is nothing to score until that fills." },
+    { "vconf",  "Periodicity min", c.voiceConfMin,
+      "How strongly periodic one 30ms window has to be to count as voiced, 0-100. Raise it "
+      "if noise is registering as pitch; lower it if a quiet or distant voice never does. "
+      "This feeds the voiced share, not the gate directly." },
+    { "vscore", "Voice score min", c.voiceScoreMin,
+      "Combined score that opens the gate, 0-100. The score is the weakest of three "
+      "measurements - how much of the last second had a fundamental at all, how much of the "
+      "pitch track moves in steps a voice could make, and how far the pitch travelled - so "
+      "whichever one is low on Live is the one to look at. A steady tone fails on range, a "
+      "full music mix fails on smoothness, a fan fails on both." },
+    { "vhold",  "Gate hold (ms)", (long)c.voiceHoldMs,
+      "How long the gate stays open after the last window that cleared the score, 100-30000. "
+      "It has to outlast the pauses inside a sentence or the fish stops mid-phrase. Too long "
+      "and a single spoken word lets a whole chorus through behind it." }
+  };
+
   const Field button[] = {
     { "btnlong", "Long press (ms)", (long)c.btnLongMs,
       "How long the button has to be held to publish long_press instead of press, 200-5000. "
@@ -313,6 +344,7 @@ static void sendPage(WiFiClient& client) {
     { "Head",    head,    sizeof(head)    / sizeof(head[0])    },
     { "Tail",    tail,    sizeof(tail)    / sizeof(tail[0])    },
     { "Mouth",   mouth,   sizeof(mouth)   / sizeof(mouth[0])   },
+    { "Voice",   voice,   sizeof(voice)   / sizeof(voice[0])   },
     { "Button",  button,  sizeof(button)  / sizeof(button[0])  }
   };
 
@@ -355,6 +387,11 @@ static void sendPage(WiFiClient& client) {
     "d('sp',o.speaking=='1'?'speech':'microphone');"
     "d('bt',o.btn=='1'?'pressed':'up');"
     "d('btc',o.btnn);"
+    "d('f0',o.f0>0?o.f0+' Hz':'none');"
+    "d('vc',o.vconf);"
+    "d('vf',o.vpct+' / '+o.vsmooth+' / '+o.vrange+'%');"
+    "d('vs',o.vscore);"
+    "d('vo',o.vopen=='1'?'open':'closed');"
     "d('up','uptime '+o.uptime);"
     "document.getElementById('sb').style.width=Math.min(100,(+o.sound)*100/sc)+'%';"
     "}).catch(function(){})}"

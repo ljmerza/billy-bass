@@ -3,7 +3,8 @@
 // Positional aggregate initializer - it has to track the field order in
 // Telemetry, so new fields go on the end of the struct and on the end here.
 static Telemetry latest = { 0, 0, false, false, 0, 0, 0, 0, 0, 0, false,
-                            false, 0 };
+                            false, 0,
+                            0, 0, 0, 0, 0, 0, false };
 static int scale = 180;
 
 void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActive,
@@ -20,6 +21,17 @@ void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActi
   latest.average = average;
   latest.threshold = threshold;
   latest.speaking = speaking;
+}
+
+void telemetrySetVoice(int f0, int conf, int voicedPct, int smoothPct,
+                       int rangePct, int score, bool open) {
+  latest.f0 = f0;
+  latest.voiceConf = conf;
+  latest.voicedPct = voicedPct;
+  latest.voiceSmoothPct = smoothPct;
+  latest.voiceRangePct = rangePct;
+  latest.voiceScore = score;
+  latest.voiceOpen = open;
 }
 
 void telemetrySetInputs(bool button, uint16_t presses) {
@@ -55,4 +67,11 @@ void telemetryFormat(String& dst) {
   dst += " uptime="; dst += (millis() / 1000); dst += 's';
   dst += " btn=";   dst += latest.button ? 1 : 0;
   dst += " btnn=";  dst += latest.presses;
+  dst += " f0=";      dst += latest.f0;
+  dst += " vconf=";   dst += latest.voiceConf;
+  dst += " vpct=";    dst += latest.voicedPct;
+  dst += " vsmooth="; dst += latest.voiceSmoothPct;
+  dst += " vrange=";  dst += latest.voiceRangePct;
+  dst += " vscore=";  dst += latest.voiceScore;
+  dst += " vopen=";   dst += latest.voiceOpen ? 1 : 0;
 }

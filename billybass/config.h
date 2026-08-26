@@ -101,6 +101,22 @@ struct BassConfig {
   // initializer, so a field inserted anywhere else silently shifts every value
   // after it.
   unsigned long btnLongMs;
+
+  // Voice gate. The band-pass only asks whether there is midrange energy, which
+  // a music track answers as well as a person does; voice.cpp asks whether the
+  // sound is periodic like a voice and whether its pitch moves like one.
+  // voiceGate 1 makes that score a precondition for the mouth, head and tail
+  // reacting to the microphone - 0 leaves the whole detector running and
+  // reported on /status but gating nothing, which is how it gets tuned.
+  // voiceConfMin is the per-window periodicity needed to call a frame voiced,
+  // voiceScoreMin the combined score needed to open the gate, and voiceHoldMs
+  // how long it stays open after the last frame that cleared it - long enough
+  // to bridge the pauses inside a sentence.
+  // Appended at the end, like btnLongMs above and for the same reason.
+  int voiceGate;
+  int voiceConfMin;
+  int voiceScoreMin;
+  unsigned long voiceHoldMs;
 };
 
 // Loads persisted values, falling back to defaults for anything unset.
