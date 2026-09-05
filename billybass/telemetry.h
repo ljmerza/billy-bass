@@ -35,6 +35,7 @@ struct Telemetry {
   int voiceRangePct;      // pitch spread over the history, % of its own minimum
   int voiceScore;         // 0-100, the weakest of the three
   bool voiceOpen;         // gate currently letting the microphone through
+  int voiceFill;          // decimated samples in the last window; <88 was not analysed
 };
 
 void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActive,
@@ -45,7 +46,7 @@ void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActi
 // detector keeps running through a motor test, and an eighteen-argument setter
 // would be unreadable either way.
 void telemetrySetVoice(int f0, int conf, int voicedPct, int smoothPct,
-                       int rangePct, int score, bool open);
+                       int rangePct, int score, bool open, int fill);
 
 // Separate from telemetrySet() because the button is sampled before the paths
 // that can return early - a motor test, safe mode - and so stays live on
@@ -61,5 +62,5 @@ int telemetryScale();
 
 // Appends "sound=.. mouth=.. head=.. tail=.. raw=.. pp=.. ppraw=.. samples=..
 // avg=.. thr=.. speaking=.. scale=.. uptime=..s btn=.. btnn=.. f0=.. vconf=..
-// vpct=.. vsmooth=.. vrange=.. vscore=.. vopen=..".
+// vpct=.. vsmooth=.. vrange=.. vscore=.. vopen=.. vfill=..".
 void telemetryFormat(String& dst);

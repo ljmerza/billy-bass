@@ -51,6 +51,7 @@ static uint16_t tauMax = 44;
 
 static int lastF0 = 0;
 static int lastConf = 0;
+static uint16_t lastFill = 0;
 
 static int16_t f0Hist[HIST];
 static uint8_t histPos = 0;
@@ -84,6 +85,7 @@ void voiceBegin(int decimatedHz) {
   if (tauMax > TAU_LIMIT) tauMax = TAU_LIMIT;
 
   filled = 0;
+  lastFill = 0;
   lastF0 = 0;
   lastConf = 0;
   histPos = 0;
@@ -101,23 +103,32 @@ void voiceFeed(int16_t sample) {
   if (filled < BUF_MAX) buf[filled++] = sample;
 }
 
-// YIN over the current buffer. Sets lastF0 and lastConf.
-static void estimatePitch() {
+// YIN over the current buffer. Sets lastF0 and lastConf. Returns false if the
+// window was too short to analyse at all, in which case neither says anything.
+static bool estimatePitch() {
   lastF0 = 0;
   lastConf = 0;
 
   // Two full periods at the longest lag is the shortest window the difference
-  // function can be trusted over. A starved window reports unvoiced rather than
-  // a guess, so the history counts it against the score instead of for it.
+  // function can be trusted over. A window shorter than that is not evidence
+  // of anything - it is a window that WiFi or an HTTP request ate - so it is
+  // reported as no result rather than as no voice.
   const uint16_t need = (uint16_t)(2 * tauMax);
-  if (filled < need) return;
+  if (filled < need) return false;
 
   const uint16_t w = filled;
 
   // Squared difference, divided by the overlap so long and short lags are
   // compared on the same footing - without that the function slopes upward on
   // sample count alone and every estimate lands at the bottom of the range.
-  for (uint16_t tau = tauMin; tau <= tauMax; tau++) {
+  // Computed from lag 1, not from tauMin: the short lags are never candidates,
+  // but the normalisation below needs them. Adjacent samples of a band-limited
+  // signal are alike, so the difference is small there and the running mean
+  // starts small - which is what makes the normalised function large at short
+  // lags and lets the first real dip stand out. Started at tauMin instead, the
+  // mean was seeded by tauMin's own value, so tauMin normalised to exactly 1.0
+  // and could never be chosen: the top of the range was 364Hz, not 400.
+  for (uint16_t tau = 1; tau <= tauMax; tau++) {
     const uint16_t n = w - tau;
     int32_t sum = 0;
     for (uint16_t i = 0; i < n; i++) {
@@ -131,11 +142,9 @@ static void estimatePitch() {
   // of ~35 lags of a loud window overflows a signed 32-bit accumulator; the
   // individual entries do not.
   int64_t running = 0;
-  int32_t count = 0;
-  for (uint16_t tau = tauMin; tau <= tauMax; tau++) {
+  for (uint16_t tau = 1; tau <= tauMax; tau++) {
     running += diff[tau];
-    count++;
-    const int64_t mean = running / count;
+    const int64_t mean = running / tau;
     int32_t d = (mean > 0) ? (int32_t)(((int64_t)diff[tau] * 1000) / mean) : 1000;
     if (d > 2000) d = 2000;
     diff[tau] = d;
@@ -168,7 +177,7 @@ static void estimatePitch() {
   // 364Hz - so without this the pitch track reports steps a voice never made
   // and the smoothness figure punishes it for them.
   float tauF = (float)best;
-  if (best > tauMin && best < tauMax) {
+  if (best > 1 && best < tauMax) {
     const float a = (float)diff[best - 1];
     const float b = (float)diff[best];
     const float c = (float)diff[best + 1];
@@ -180,6 +189,7 @@ static void estimatePitch() {
   }
 
   if (tauF > 0.0f) lastF0 = (int)((float)sampleHz / tauF + 0.5f);
+  return true;
 }
 
 // Recomputes the three history features and the score from f0Hist.
@@ -248,7 +258,13 @@ static void scoreHistory() {
 }
 
 void voiceAnalyse() {
-  estimatePitch();
+  lastFill = filled;
+
+  // A starved window is left out of the history entirely. Pushing it as
+  // unvoiced dragged the voiced share down every time the network took a bite
+  // out of the sampling loop - which is exactly when someone has the web UI
+  // open watching the score. The gate holds whatever the last real frame said.
+  if (!estimatePitch()) return;
 
   const BassConfig& cfg = config();
   const bool voicedFrame = (lastF0 > 0) && (lastConf >= cfg.voiceConfMin);
@@ -273,6 +289,7 @@ int  voiceVoicedPct()  { return voicedPct; }
 int  voiceSmoothPct()  { return smoothPct; }
 int  voiceRangePct()   { return rangePct; }
 int  voiceScore()      { return score; }
+int  voiceSamples()    { return lastFill; }
 
 bool voiceOpen() {
   // Subtraction so this survives the millis() rollover.

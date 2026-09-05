@@ -86,7 +86,7 @@ static void pitchCase(const char* name, double f0) {
 }
 
 // ---- whole-scene scoring -------------------------------------------------
-enum Scene { TALK, SING, HELD, DRONE, NOISE, MUSIC, BAND, HUM };
+enum Scene { TALK, STARVED, SING, HELD, DRONE, NOISE, MUSIC, BAND, HUM };
 
 static void scene(const char* name, Scene kind, int frames) {
   voiceBegin(FS);
@@ -100,7 +100,12 @@ static void scene(const char* name, Scene kind, int frames) {
   int scoreSum = 0, openFrames = 0, samples = 0;
 
   for (int k = 0; k < frames; k++) {
+    // STARVED is talking with every other window cut to 42 samples - what a
+    // 15ms window delivers, or a 30ms one that WiFi took a bite out of. Those
+    // windows must be left out of the history, not counted as silence.
+    const int len = (kind == STARVED && (k & 1)) ? 42 : FRAME;
     switch (kind) {
+      case STARVED:
       case TALK:
         // Voiced runs of a few frames with a gliding pitch, broken by the
         // consonants and word gaps that make speech intermittent.
@@ -156,7 +161,7 @@ static void scene(const char* name, Scene kind, int frames) {
                    146.8 + 20.0 * ((k / 9) % 3), 300.0, FRAME, s);
         break;
     }
-    feedFrame(s, FRAME);
+    feedFrame(s, len);
 
     if (k >= 32) {                   // let the history fill before scoring
       scoreSum += voiceScore();
@@ -185,9 +190,11 @@ int main() {
   pitchCase("female 200Hz",    200.0);
   pitchCase("female 250Hz",    250.0);
   pitchCase("sung 330Hz",      330.0);
+  pitchCase("sung 390Hz",      390.0);
 
   printf("\nScene scoring (score >= %d opens the gate)\n", cfg.voiceScoreMin);
   scene("talking", TALK,  140);
+  scene("starved", STARVED, 140);
   scene("singing", SING,  140);
   scene("held",    HELD,  140);
   scene("drone",   DRONE, 140);

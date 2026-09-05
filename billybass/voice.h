@@ -67,6 +67,11 @@ int  voiceSmoothPct();    // 0-100, history: share of frame pairs a voice could 
 int  voiceRangePct();     // history: pitch spread as a percent of its own minimum
 int  voiceScore();        // 0-100, the weakest of the three sub-scores
 
+// Decimated samples the last window delivered. Under 2x the longest lag (88
+// at 4kHz) the window was not analysed and the history was left alone, so a
+// low number here with f0=0 means starved, not silent.
+int  voiceSamples();
+
 // True while the score has cleared config().voiceScoreMin within the last
 // config().voiceHoldMs. This is what the sketch gates the motors on.
 bool voiceOpen();

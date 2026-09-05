@@ -4,7 +4,7 @@
 // Telemetry, so new fields go on the end of the struct and on the end here.
 static Telemetry latest = { 0, 0, false, false, 0, 0, 0, 0, 0, 0, false,
                             false, 0,
-                            0, 0, 0, 0, 0, 0, false };
+                            0, 0, 0, 0, 0, 0, false, 0 };
 static int scale = 180;
 
 void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActive,
@@ -24,7 +24,7 @@ void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActi
 }
 
 void telemetrySetVoice(int f0, int conf, int voicedPct, int smoothPct,
-                       int rangePct, int score, bool open) {
+                       int rangePct, int score, bool open, int fill) {
   latest.f0 = f0;
   latest.voiceConf = conf;
   latest.voicedPct = voicedPct;
@@ -32,6 +32,7 @@ void telemetrySetVoice(int f0, int conf, int voicedPct, int smoothPct,
   latest.voiceRangePct = rangePct;
   latest.voiceScore = score;
   latest.voiceOpen = open;
+  latest.voiceFill = fill;
 }
 
 void telemetrySetInputs(bool button, uint16_t presses) {
@@ -74,4 +75,5 @@ void telemetryFormat(String& dst) {
   dst += " vrange=";  dst += latest.voiceRangePct;
   dst += " vscore=";  dst += latest.voiceScore;
   dst += " vopen=";   dst += latest.voiceOpen ? 1 : 0;
+  dst += " vfill=";   dst += latest.voiceFill;
 }

@@ -402,7 +402,8 @@ void loop() {
   // Set before the motor-test early return, so the detector stays readable on
   // /status while a motor is being exercised.
   telemetrySetVoice(voiceF0(), voiceConfidence(), voiceVoicedPct(),
-                    voiceSmoothPct(), voiceRangePct(), voiceScore(), voiceOpen());
+                    voiceSmoothPct(), voiceRangePct(), voiceScore(), voiceOpen(),
+                    voiceSamples());
 
   // A manual motor test outranks everything, so a negative result points at
   // wiring or power rather than at the sensing path.
