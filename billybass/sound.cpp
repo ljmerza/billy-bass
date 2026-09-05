@@ -2,9 +2,13 @@
 #include "config.h"
 #include "voice.h"
 
-// Window length. At the 300Hz low end of the voice band this still spans about
-// nine cycles, so a quiet passage cannot hide between samples.
-static const unsigned long WINDOW_MS = 30;
+// Window length. Also the loop period, because the whole window is sampled in
+// one blocking pass - so this sets how promptly the mouth pulse in the sketch
+// can be ended. At 30ms a 45ms pulse ran anywhere from 45 to 80ms and the mouth
+// looked sluggish; 15ms halves that overrun. The cost is at the bottom of the
+// voice band, where the window now spans about four and a half cycles at 300Hz
+// rather than nine, so the peak-to-peak reading is noisier there.
+static const unsigned long WINDOW_MS = 15;
 
 // Sampling is paced to a fixed rate rather than run flat out. The filter
 // coefficients are derived for SAMPLE_HZ, so a free-running analogRead() - whose
@@ -32,9 +36,9 @@ static const uint16_t WARMUP_SAMPLES = 64;
 // it settles on the DC bias rather than following the audio.
 static const uint8_t BASELINE_SHIFT = 4;
 
-// Running mean of the level, as a shift. About 32 windows - roughly a second -
-// so it sits above syllable rate but still follows a volume change within a
-// bar or two of music.
+// Running mean of the level, as a shift. About 32 windows - half a second at
+// the 15ms window above - so it sits above syllable rate but still follows a
+// volume change within a bar or two of music.
 static const uint8_t AVERAGE_SHIFT = 5;
 
 // Pitch tap. voice.cpp needs a fundamental to measure, and the 300-3000Hz chain

@@ -208,135 +208,126 @@ static void sendPage(WiFiClient& client) {
 
   const Field general[] = {
     { "thresh",  "Sound threshold", c.soundThreshold,
-      "Hard noise gate on the mapped level, 0-1023 (full scale is 180). Nothing moves until "
-      "sound clears this. The adaptive percentage can raise the bar, never lower it." },
+      "How loud sound has to be before the fish reacts at all, 0-1023 (180 is the loudest "
+      "reading). Bigger = quiet sounds are ignored. Smaller = the fish reacts to more, "
+      "including room noise. Try 30." },
     { "ppmax",   "Full-scale swing", c.ppFullScale,
-      "Raw ADC peak-to-peak swing treated as full volume, 10-4095. It has to track the real "
-      "signal: once pp on /status runs above this the level saturates, per-word dynamics are "
-      "lost and every syllable slams the mouth identically. Raise it until the loudest "
-      "material sits just under; lower it for a quiet source." },
+      "How loud your audio gets at its loudest, 10-4095. Set this to match reality: watch pp "
+      "on the Live panel while your audio plays and set this just above the biggest number "
+      "you see. Too small = the mouth slams the same on every word. Too big = the mouth "
+      "barely moves." },
     { "voice",   "Voice filter (0/1)", c.voiceFilter,
-      "1 measures only the 300-3000Hz voice band, 0 measures everything. Full-band readings "
-      "stay high through a whole music track, which holds the mouth open." },
+      "1 = only listen to the frequencies people talk in. 0 = listen to everything, including "
+      "bass and hiss. Leave it at 1 - with 0, music holds the mouth open the whole track." },
     { "adapt",   "Adaptive thresh (%)", c.adaptPct,
-      "Gate as a percentage of the running mean level, 0-300. It can only raise the bar above "
-      "the sound threshold, never lower it. Leave it at 0 while articulate is on: the pulse "
-      "train already supplies the open and close rhythm, and a high adaptive gate chases loud "
-      "continuous audio upward until only extreme peaks fire and the mouth skips words. It is "
-      "there for the plain proportional hold instead." },
+      "Ignores anything quieter than this percentage of the recent average, 0-300. Bigger = "
+      "the mouth skips more words. 0 = off. Use 0. This is only useful with Articulate "
+      "turned off." },
     { "spkdly",  "Speak delay (ms)", (long)c.speakDelayMs,
-      "Holds the mouth shut this long at the start of an utterance, 0-5000, so the animation "
-      "can be lined up with audio another device is playing." },
+      "Waits this long with the mouth shut before starting a /speak line, 0-5000ms. Use it to "
+      "line the mouth up with audio playing on a speaker. Bigger = the fish starts later. "
+      "Try 0." },
     { "spkrate", "Speak rate (%)", c.speakRatePct,
-      "Scales syllable timing for /speak, 50-200. 100 is normal pace; lower is slower." }
+      "How fast the mouth moves through a /speak line, 50-200. Bigger = talks faster. "
+      "Smaller = talks slower. 100 is normal." }
   };
 
   const Field head[] = {
     { "headq",   "Quiet drive (0/1)", c.headQuiet,
-      "1 drives the head with only the two settings that do not switch - full on and "
-      "released - because the shield chops its PWM at about 1.5kHz, right in the voice band, "
-      "and the head is the one motor held on for seconds at a time. A part-speed hold puts "
-      "that buzz on the ground the audio amp shares, which is audible on the speaker. Head "
-      "speed and head hold power are ignored while this is on: the stroke runs full on, so "
-      "head travel alone sets how far the head swings, and the hold on/off pair sets how "
-      "firmly it stays there. 0 restores the proportional drive, for comparison." },
+      "1 = the head motor is only ever fully on or fully off, which stops it putting a buzz "
+      "on the speaker. 0 = the motor can run at part power, which is smoother but can hum. "
+      "With 1 on, Head speed and Head hold power do nothing - use Hold on and Hold off "
+      "instead." },
     { "headspd", "Head speed", c.headSpeed,
-      "Drive PWM during the head's stroke, 0-255. Higher swings it out faster and harder "
-      "against the stop. Ignored while quiet drive is on - the stroke runs full on." },
+      "How hard the motor pushes the head out, 0-255. Bigger = swings out faster and harder. "
+      "Smaller = lazier. Does nothing while Quiet drive is 1. Try 254." },
     { "headmv",  "Head travel (ms)", (long)c.headMoveMs,
-      "How long the motor drives to swing the head out, 0-5000. Nothing measures where the "
-      "head is, so this stroke length is what sets how far it comes out - longer means "
-      "further, up to the mechanical stop." },
+      "How long the motor pushes to swing the head out, 0-5000ms. Bigger = the head comes "
+      "out further, until it hits its stop. Smaller = only part way. Try 400." },
     { "headhld", "Head hold power", c.headHoldSpeed,
-      "PWM that holds the head out once the stroke ends, 0-255. Enough to beat the return "
-      "spring without stalling at full power the whole time it is out. 0 lets the spring "
-      "pull it straight back. Ignored while quiet drive is on - the hold on/off pair sets "
-      "the holding torque instead." },
+      "How hard the motor works to keep the head out once it is there, 0-255. Bigger = holds "
+      "firmer but the motor stays under strain. 0 = let it fall straight back in. Does "
+      "nothing while Quiet drive is 1. Try 120." },
     { "headhon", "Hold on (ms)", (long)c.headHoldOnMs,
-      "Energised half of the quiet hold cycle, 0 or 20-1000. Together with the released half "
-      "this sets the average holding torque - 30 on against 40 off is about 43%, close to "
-      "what a hold power of 120 used to give. 0 means no hold at all, the same as a hold "
-      "power of 0: the stroke ends and the spring takes the head straight back." },
+      "How long the head motor pulls during each hold pulse, 0 or 20-1000ms. Bigger = holds "
+      "the head out firmer. 0 = do not hold at all, let the head fall back after it swings "
+      "out. Only used while Quiet drive is 1. Try 30." },
     { "headhof", "Hold off (ms)", (long)c.headHoldOffMs,
-      "Released half of the quiet hold cycle, 20-2000. Longer means less average torque and "
-      "more visible sag between drives; shorter holds the head steadier but transitions more "
-      "often. The whole cycle wants to stay well under the head's own settling time, so keep "
-      "the pair short rather than scaling both up." },
+      "How long the head motor rests between those pulls, 20-2000ms. Bigger = the head "
+      "droops and bobs more. Smaller = holds steadier. Only used while Quiet drive is 1. "
+      "Try 40." },
     { "headtmo", "Stay out (ms)", (long)c.headTimeoutMs,
-      "How long the head stays out after the last sound, 0-600000, before the motor releases "
-      "and the spring pulls it in. New sound restarts the clock." }
+      "How long the head stays out after the sound stops, 0-600000ms. Bigger = stays out "
+      "longer after a noise. Smaller = snaps back quickly. More sound restarts the clock. "
+      "Try 3000." }
   };
 
   const Field tail[] = {
     { "tailsnd", "Tail on sound (0/1)", c.tailSoundDriven,
-      "1 flaps the tail whenever the head is out - the fish's reacting-to-sound window - as "
-      "well as during a /speak utterance. 0 is speech only, which means the tail never "
-      "responds to the microphone and sits still through any amount of audio. It rides the "
-      "head's latch rather than the raw threshold because the level crosses back and forth "
-      "several times a second on real audio, and gating on that directly would abandon every "
-      "drive stroke halfway and leave the tail twitching." },
+      "1 = the tail flaps whenever the fish hears something. 0 = the tail only moves during a "
+      "/speak line and ignores the microphone completely." },
     { "tailen",  "Tail enabled (0/1)", c.tailEnabled,
-      "0 parks the tail and leaves the mouth and head working - for a quieter fish, or to "
-      "take a suspect tail motor out of the picture while tuning. Switching it off mid-flap "
-      "releases the motor rather than leaving it energised." },
+      "0 = park the tail and leave the mouth and head working. Use it for a quieter fish, or "
+      "to rule the tail motor out while you are tuning something else." },
     { "tailspd", "Tail speed", c.tailSpeed,
-      "Drive PWM while the tail flaps, 0-255." },
+      "How hard the tail motor pulls, 0-255. Bigger = a wider, harder flap. Smaller = a "
+      "gentler one. Try 200." },
     { "tailms",  "Tail flap (ms)", (long)c.tailFlapMs,
-      "One half-stroke, 40-2000. Driven forward this long, then released for the same so the "
-      "spring swings it back. Under 40ms the spring cannot finish a return and the tail just "
-      "buzzes. The tail only flaps while the fish is speaking." }
+      "How long each half of a flap takes, 40-2000ms - it pulls for this long, then rests for "
+      "this long so the spring swings it back. Bigger = slow lazy flaps. Smaller = fast "
+      "flaps. Below 40 the tail just buzzes. Try 150." }
   };
 
   const Field mouth[] = {
     { "mouthlo", "Mouth speed min", c.mouthSpeedMin,
-      "PWM floor once the mouth opens, 0-255. A sound sitting right at the threshold drives "
-      "the motor at this speed." },
+      "How hard the mouth opens on the quietest sound it reacts to, 0-255. Bigger = even "
+      "quiet words move the jaw properly. Smaller = quiet words barely twitch. Try 170." },
     { "mouthhi", "Mouth speed max", c.mouthSpeedMax,
-      "PWM at the loudest sound, 0-255. Levels between the threshold and full scale map "
-      "between min and max." },
+      "How hard the mouth opens on the loudest sound, 0-255. Bigger = loud words snap the jaw "
+      "wide. Everything between quiet and loud lands between this and Mouth speed min, so a "
+      "gap between the two is what makes loud words look different from quiet ones. Try "
+      "254." },
     { "artic",   "Articulate (0/1)", c.articulate,
-      "1 pulses the mouth so the return spring always gets a closed window. 0 is the plain "
-      "proportional hold, which pins the mouth open on continuous audio." },
+      "1 = the mouth opens and shuts in bursts, one per word, which is what makes it look "
+      "like talking. 0 = the mouth is held open the whole time there is sound, so it hangs "
+      "open through music. Use 1." },
     { "mouthon", "Mouth pulse on (ms)", (long)c.mouthOnMs,
-      "Length of one drive pulse when articulate is on, 20-1000. Below about 20ms the motor "
-      "never overcomes its own inertia and the mouth only twitches." },
+      "How long the mouth is pulled open in each burst, 20-1000ms. Bigger = wider, slower "
+      "mouth movements. Smaller = quick small ones, and under about 20 it only twitches. "
+      "Only used while Articulate is 1. Try 70." },
     { "mouthof", "Mouth pulse off (ms)", (long)c.mouthOffMs,
-      "Guaranteed closed time between pulses when articulate is on, 20-1000. This is the "
-      "window the return spring uses to shut the mouth." }
+      "How long the mouth is guaranteed shut between bursts, 20-1000ms. Bigger = fewer, more "
+      "separated mouth movements. Smaller = faster chattering, but the mouth may not fully "
+      "close. Only used while Articulate is 1. Try 50." }
   };
 
   const Field voice[] = {
     { "vgate",  "Voice gate (0/1)", c.voiceGate,
-      "1 makes the pitch detector a precondition for reacting to the microphone: the mouth, "
-      "head and tail stay still unless the sound is periodic like a voice and its pitch is "
-      "moving like one. 0 leaves the detector running and reported on Live but gating "
-      "nothing, which is how you tune it - play the material you care about and watch the "
-      "score before switching this on. Speech from /speak is never gated. Expect the gate to "
-      "open about half a second after someone starts talking: the score is built from about "
-      "a second of pitch history and there is nothing to score until that fills." },
+      "1 = only react to sounds that are actually a person talking, and ignore music, fans "
+      "and bangs. 0 = react to any sound loud enough. Set the three settings below first with "
+      "this at 0, watching the Voice score on the Live panel while your audio plays, then "
+      "turn it on. It takes about half a second of talking before the fish starts moving." },
     { "vconf",  "Periodicity min", c.voiceConfMin,
-      "How strongly periodic one 30ms window has to be to count as voiced, 0-100. Raise it "
-      "if noise is registering as pitch; lower it if a quiet or distant voice never does. "
-      "This feeds the voiced share, not the gate directly." },
+      "How much a sound has to sound like a voice rather than noise, 0-100. Bigger = noise "
+      "stops counting as a voice, but a quiet or far-away person might too. Smaller = picks "
+      "up quiet voices, and more junk. Try 55." },
     { "vscore", "Voice score min", c.voiceScoreMin,
-      "Combined score that opens the gate, 0-100. The score is the weakest of three "
-      "measurements - how much of the last second had a fundamental at all, how much of the "
-      "pitch track moves in steps a voice could make, and how far the pitch travelled - so "
-      "whichever one is low on Live is the one to look at. A steady tone fails on range, a "
-      "full music mix fails on smoothness, a fan fails on both." },
+      "How sure the fish has to be before it decides it is hearing a voice, 0-100. Bigger = "
+      "fewer false starts on music, but real talking gets missed. Smaller = reacts more "
+      "easily to anything. Watch Voice score on the Live panel while your audio plays and set "
+      "this just under what real talking reaches. Try 55." },
     { "vhold",  "Gate hold (ms)", (long)c.voiceHoldMs,
-      "How long the gate stays open after the last window that cleared the score, 100-30000. "
-      "It has to outlast the pauses inside a sentence or the fish stops mid-phrase. Too long "
-      "and a single spoken word lets a whole chorus through behind it." }
+      "How long the fish keeps going after someone stops talking, 100-30000ms. Bigger = it "
+      "rides through the gaps between sentences, but a single spoken word lets a whole song "
+      "through behind it. Smaller = it stops dead mid-sentence. Try 1500." }
   };
 
   const Field button[] = {
     { "btnlong", "Long press (ms)", (long)c.btnLongMs,
-      "How long the button has to be held to publish long_press instead of press, 200-5000. "
-      "The gesture is decided when you let go, so one press sends exactly one event and an "
-      "automation on a short press never also fires partway through a long one. Nothing on "
-      "the fish acts on either - both go to Home Assistant as the Button entity's event "
-      "type, and the automation lives there." }
+      "How long the button has to be held to count as a long press instead of a short one, "
+      "200-5000ms. Bigger = you have to hold it longer. The fish itself does nothing with "
+      "either press - both are sent to Home Assistant, and what happens next is set up "
+      "there. Try 700." }
   };
 
   const Section sections[] = {
