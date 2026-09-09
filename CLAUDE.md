@@ -30,24 +30,36 @@ Its address is **`192.168.1.182`** (DHCP, so confirm it if the board stops
 answering: sweep the LAN for TCP 65280 open, which is the OTA port).
 
 ```
-arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi --output-dir /tmp/bb-build billybass
+~/bin/arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi --output-dir /tmp/bb-build billybass
 
-~/.arduino15/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA \
+~/bin/arduinoOTA \
   -address 192.168.1.182 -port 65280 \
   -username arduino -password "$SECRET_OTA_PASS" \
   -sketch /tmp/bb-build/billybass.ino.bin -upload /sketch -b -v
 ```
 
-`arduino-cli` lives at
-`/home/cubxi/Applications/arduino-ide/resources/app/lib/backend/resources/arduino-cli`
-(not on `PATH`). `SECRET_OTA_PASS` is in `billybass/arduino_secrets.h`, which is
-gitignored.
+`arduino-cli` lives at `~/bin/arduino-cli` (not on `PATH`). It is a standalone
+install, not the copy bundled with the Arduino IDE - that path is gone. The
+board core is `arduino:renesas_uno`; the sketch also needs the `Adafruit Motor
+Shield V2 Library`, `PubSubClient` and `ArduinoOTA` libraries.
+
+The `arduinoOTA` upload tool is at `~/bin/arduinoOTA`, also a standalone
+install. It does **not** come with the `renesas_uno` core - only cores like
+`arduino:samd` bundle it, which is why it used to be found under
+`~/.arduino15/packages/`. The standalone build is **1.4.1**, not the 1.3.0 the
+note below was written against.
+
+`SECRET_OTA_PASS` is in `billybass/arduino_secrets.h`, which is gitignored and
+is **not** present in a fresh checkout - copy `arduino_secrets.h.example` and
+fill it in, or the compile fails on a missing header.
 
 **The upload tool reports `Error flashing the sketch` on a *successful* flash.**
 arduinoOTA 1.3.0 pushes the binary, the board applies it and resets, and the
 tool loses the connection before it can confirm — so it exits non-zero either
 way. **Verify by checking `uptime` on `/status`**, not by the exit code. If
 uptime reset to a small number and the new fields are present, it worked.
+Whether 1.4.1 still does this has not been checked — trust `/status` either
+way.
 
 `arduino-cli upload --protocol network` does **not** work here — the Renesas
 platform has no network upload recipe.

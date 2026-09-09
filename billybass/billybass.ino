@@ -21,6 +21,7 @@
 #include "sound.h"
 #include "motortest.h"
 #include "inputs.h"
+#include "voice.h"
 
 // ----- Pin Configuration -----
 const int SOUND_PIN = A0;               // Analog pin for sound sensor input
@@ -89,7 +90,13 @@ const BassConfig DEFAULT_CONFIG = {
   115,    // adaptPct - open on peaks 15% above the running mean
   HEAD_QUIET, HEAD_HOLD_ON_MS, HEAD_HOLD_OFF_MS,
   TAIL_SOUND_DRIVEN,
-  BUTTON_LONG_MS
+  BUTTON_LONG_MS,
+  0,      // voiceGate - off. The pitch detector runs and reports either way, so
+          // its numbers can be watched against real material on /status before
+          // anything is gated on them
+  55,     // voiceConfMin - periodicity a window needs to count as voiced
+  55,     // voiceScoreMin - combined score that opens the gate
+  1500    // voiceHoldMs - long enough to bridge the pauses inside a sentence
 };
 
 // ----- Globals -----
@@ -392,6 +399,12 @@ void loop() {
   speechLoop();
   soundLoop();
 
+  // Set before the motor-test early return, so the detector stays readable on
+  // /status while a motor is being exercised.
+  telemetrySetVoice(voiceF0(), voiceConfidence(), voiceVoicedPct(),
+                    voiceSmoothPct(), voiceRangePct(), voiceScore(), voiceOpen(),
+                    voiceSamples());
+
   // A manual motor test outranks everything, so a negative result points at
   // wiring or power rather than at the sensing path.
   uint8_t testMotor; int testSpeed;
@@ -436,7 +449,16 @@ void loop() {
   unsigned long currentMillis = millis();
   int mouthSpeed = 0;
 
-  const bool above = sensorValue > threshold;
+  bool above = sensorValue > threshold;
+
+  // Voice gate. The threshold above only knows how loud the band is, and a
+  // music track is exactly as loud as a person. voiceOpen() adds the question
+  // the threshold cannot ask - was that sound periodic like a voice, and did
+  // its pitch move like one - and holds its answer for cfg.voiceHoldMs so the
+  // gaps inside a sentence do not close it. Speech is exempt for the same
+  // reason it is exempt from the adaptive threshold: that envelope is
+  // synthesised and there is no microphone signal to have an opinion about.
+  if (!speaking && cfg.voiceGate && !voiceOpen()) above = false;
 
   updateHead(above, currentMillis);
 

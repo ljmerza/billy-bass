@@ -25,11 +25,28 @@ struct Telemetry {
   // depends on it.
   bool button;            // debounced, true while held
   uint16_t presses;       // button presses since boot
+
+  // Voice detector. Reported whether or not it is gating anything, so the
+  // numbers can be watched against real material before voiceGate is turned on.
+  int f0;                 // Hz for the last window, 0 if it had no fundamental
+  int voiceConf;          // 0-100 periodicity of that window
+  int voicedPct;          // 0-100 share of the history that was voiced
+  int voiceSmoothPct;     // 0-100 share of the pitch track a voice could make
+  int voiceRangePct;      // pitch spread over the history, % of its own minimum
+  int voiceScore;         // 0-100, the weakest of the three
+  bool voiceOpen;         // gate currently letting the microphone through
+  int voiceFill;          // decimated samples in the last window; <88 was not analysed
 };
 
 void telemetrySet(int soundLevel, int mouthSpeed, bool headActive, bool tailActive,
                   int raw, int peakToPeak, int rawPeakToPeak, int samples,
                   int average, int threshold, bool speaking);
+
+// Separate from telemetrySet() for the same reason telemetrySetInputs() is: the
+// detector keeps running through a motor test, and an eighteen-argument setter
+// would be unreadable either way.
+void telemetrySetVoice(int f0, int conf, int voicedPct, int smoothPct,
+                       int rangePct, int score, bool open, int fill);
 
 // Separate from telemetrySet() because the button is sampled before the paths
 // that can return early - a motor test, safe mode - and so stays live on
@@ -44,5 +61,6 @@ void telemetrySetScale(int fullScale);
 int telemetryScale();
 
 // Appends "sound=.. mouth=.. head=.. tail=.. raw=.. pp=.. ppraw=.. samples=..
-// avg=.. thr=.. speaking=.. scale=.. uptime=..s btn=.. btnn=..".
+// avg=.. thr=.. speaking=.. scale=.. uptime=..s btn=.. btnn=.. f0=.. vconf=..
+// vpct=.. vsmooth=.. vrange=.. vscore=.. vopen=.. vfill=..".
 void telemetryFormat(String& dst);

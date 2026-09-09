@@ -9,3 +9,6 @@ build/
 
 # Editor / IDE (machine-specific paths)
 .vscode/
+
+# Host-side test harness binary
+tools/voicetest/voicetest

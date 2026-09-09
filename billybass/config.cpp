@@ -32,6 +32,10 @@ static const char* K_HEADHON = "headhon";
 static const char* K_HEADHOF = "headhof";
 static const char* K_TAILSND = "tailsnd";
 static const char* K_BTNLONG = "btnlong";
+static const char* K_VGATE   = "vgate";
+static const char* K_VCONF   = "vconf";
+static const char* K_VSCORE  = "vscore";
+static const char* K_VHOLD   = "vhold";
 
 void configBegin(const BassConfig& d) {
   defaults = d;
@@ -63,6 +67,10 @@ void configBegin(const BassConfig& d) {
   cfg.headHoldOffMs  = prefs.getULong(K_HEADHOF, d.headHoldOffMs);
   cfg.tailSoundDriven = prefs.getInt(K_TAILSND, d.tailSoundDriven);
   cfg.btnLongMs      = prefs.getULong(K_BTNLONG, d.btnLongMs);
+  cfg.voiceGate      = prefs.getInt(K_VGATE, d.voiceGate);
+  cfg.voiceConfMin   = prefs.getInt(K_VCONF, d.voiceConfMin);
+  cfg.voiceScoreMin  = prefs.getInt(K_VSCORE, d.voiceScoreMin);
+  cfg.voiceHoldMs    = prefs.getULong(K_VHOLD, d.voiceHoldMs);
   prefs.end();
 }
 
@@ -152,6 +160,21 @@ bool configSet(const char* key, long value) {
     // hold. Ceiling of 5000 so a long press cannot become unreachable.
     if (value < 200 || value > 5000) return false;
     cfg.btnLongMs = (unsigned long)value;
+  } else if (!strcmp(key, K_VGATE)) {
+    if (value < 0 || value > 1) return false;
+    cfg.voiceGate = (int)value;
+  } else if (!strcmp(key, K_VCONF)) {
+    if (value < 0 || value > 100) return false;
+    cfg.voiceConfMin = (int)value;
+  } else if (!strcmp(key, K_VSCORE)) {
+    if (value < 0 || value > 100) return false;
+    cfg.voiceScoreMin = (int)value;
+  } else if (!strcmp(key, K_VHOLD)) {
+    // Floor of 100ms: the gate is re-evaluated once per sampling window, so a
+    // hold shorter than a couple of windows closes it between frames of the
+    // same word. Ceiling of 30s so a stuck-open gate always recovers.
+    if (value < 100 || value > 30000) return false;
+    cfg.voiceHoldMs = (unsigned long)value;
   } else if (!strcmp(key, K_PPMAX)) {
     if (value < 10 || value > 4095) return false;
     cfg.ppFullScale = (int)value;
@@ -192,6 +215,10 @@ void configSave() {
   prefs.putULong(K_HEADHOF, cfg.headHoldOffMs);
   prefs.putInt(K_TAILSND, cfg.tailSoundDriven);
   prefs.putULong(K_BTNLONG, cfg.btnLongMs);
+  prefs.putInt(K_VGATE, cfg.voiceGate);
+  prefs.putInt(K_VCONF, cfg.voiceConfMin);
+  prefs.putInt(K_VSCORE, cfg.voiceScoreMin);
+  prefs.putULong(K_VHOLD, cfg.voiceHoldMs);
   prefs.end();
 
   dirty = false;
@@ -249,4 +276,12 @@ void configFormat(String& dst) {
   dst += K_TAILSND; dst += '=';  dst += cfg.tailSoundDriven;
   dst += ' ';
   dst += K_BTNLONG; dst += '=';  dst += cfg.btnLongMs;
+  dst += ' ';
+  dst += K_VGATE;   dst += '=';  dst += cfg.voiceGate;
+  dst += ' ';
+  dst += K_VCONF;   dst += '=';  dst += cfg.voiceConfMin;
+  dst += ' ';
+  dst += K_VSCORE;  dst += '=';  dst += cfg.voiceScoreMin;
+  dst += ' ';
+  dst += K_VHOLD;   dst += '=';  dst += cfg.voiceHoldMs;
 }
